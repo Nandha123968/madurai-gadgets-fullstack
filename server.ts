@@ -43,7 +43,7 @@ if (process.env.DB_HOST) {
                 console.error("MySQL Pool connection error ❌: ", err);
             } else {
                 console.log("MySQL Database Pool Connected Successfully! 🔥");
-                connection.release(); // Connection-ah pool-kku thirumba kuduthuru
+                connection.release();
             }
         });
     } catch (e) {
