@@ -23,10 +23,9 @@ app.use(express.json());
 // MySQL Database Connection (Aiven MySQL)
 // ==========================================
 let db: mysql.Connection | null = null;
-
 if (process.env.DB_HOST) {
-  try {
-    db = mysql.createPool({
+    try {
+        db = mysql.createPool({
             host: process.env.DB_HOST,
             user: process.env.DB_USER,
             password: process.env.DB_PASSWORD,
@@ -44,12 +43,17 @@ if (process.env.DB_HOST) {
                 console.error("MySQL Pool connection error ❌: ", err);
             } else {
                 console.log("MySQL Database Pool Connected Successfully! 🔥");
-                connection.release();
+                connection.release(); // Connection-ah pool-kku thirumba kuduthuru
             }
         });
-        console.log("MySQL Database Connected Successfully! 🔥");
-        
-        // Automatic-ah Products Table Create Panna Code
+    } catch (e) {
+        console.error("Failed to initialize MySQL Connection", e);
+        db = null;
+    }
+} else {
+    console.log("No MySQL connection environment variables found. Using default products.");
+}
+// Automatic-ah Products Table Create Panna Code
         const createTableQuery = `
           CREATE TABLE IF NOT EXISTS products (
             id INT AUTO_INCREMENT PRIMARY KEY,
