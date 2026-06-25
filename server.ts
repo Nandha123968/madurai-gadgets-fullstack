@@ -26,20 +26,27 @@ let db: mysql.Connection | null = null;
 
 if (process.env.DB_HOST) {
   try {
-    db = mysql.createConnection({
-      host: process.env.DB_HOST,
-      user: process.env.DB_USER,
-      password: process.env.DB_PASSWORD,
-      database: process.env.DB_NAME,
-      port: process.env.DB_PORT ? Number(process.env.DB_PORT) : 3306,
-      ssl: { rejectUnauthorized: false }
-    });
+    db = mysql.createPool({
+            host: process.env.DB_HOST,
+            user: process.env.DB_USER,
+            password: process.env.DB_PASSWORD,
+            database: process.env.DB_NAME,
+            port: process.env.DB_PORT ? Number(process.env.DB_PORT) : 3306,
+            ssl: { rejectUnauthorized: false },
+            waitForConnections: true,
+            connectionLimit: 10,
+            queueLimit: 0
+        });
 
-    db.connect((err) => {
-      if (err) {
-        console.error("MySQL Database connection error ❌: ", err);
-        db = null;
-      } else {
+        // Connection test
+        db.getConnection((err, connection) => {
+            if (err) {
+                console.error("MySQL Pool connection error ❌: ", err);
+            } else {
+                console.log("MySQL Database Pool Connected Successfully! 🔥");
+                connection.release();
+            }
+        });
         console.log("MySQL Database Connected Successfully! 🔥");
         
         // Automatic-ah Products Table Create Panna Code
