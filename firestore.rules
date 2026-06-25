@@ -1,0 +1,85 @@
+rules_version = '2';
+service cloudfirestore {
+  match /databases/{database}/documents {
+
+    // Global default-deny safety net
+    match /{document=**} {
+      allow read, write: if false;
+    }
+
+    // Helper functions
+    function isSignedIn() {
+      return request.auth != null;
+    }
+
+    function isEmailVerified() {
+      return isSignedIn() && request.auth.token.email_verified == true;
+    }
+
+    // Admin authorization rule based on the user's bootstrapped email
+    function isAdmin() {
+      return isEmailVerified() && request.auth.token.email == 'nandharx420@gmail.com';
+    }
+
+    // Valid string id format check
+    function isValidId(id) {
+      return id is string && id.size() <= 128 && id.matches('^[a-zA-Z0-9_\\-]+$');
+    }
+
+    // Validation helper for products
+    function isValidProduct(data) {
+      return data.keys().hasAll(['id', 'name', 'price', 'category', 'description', 'stock'])
+        && data.id is string && data.id.size() <= 128
+        && data.name is string && data.name.size() <= 200
+        && data.price is number && data.price > 0
+        && data.category is string && data.category.size() <= 100
+        && data.description is string && data.description.size() <= 1000
+        && data.stock is number && data.stock >= 0;
+    }
+
+    // Validation helper for orders
+    function isValidOrder(data) {
+      return data.keys().hasAll(['id', 'items', 'total', 'shipping', 'date', 'status'])
+        && data.id is string && data.id.size() <= 128
+        && data.items is list
+        && data.total is number && data.total >= 0
+        && data.shipping is map
+        && data.date is string && data.date.size() <= 100
+        && data.status is string && (data.status == 'Processing' || data.status == 'Shipped' || data.status == 'Delivered');
+    }
+
+    // 1. Products Catalog rules
+    match /products/{productId} {
+      allow read: if true; // Public catalog access
+      
+      allow create: if isAdmin() 
+        && isValidId(productId) 
+        && isValidProduct(request.resource.data) 
+        && request.resource.data.id == productId;
+        
+      allow update: if isAdmin() 
+        && isValidId(productId) 
+        && isValidProduct(request.resource.data)
+        && request.resource.data.id == resource.data.id;
+        
+      allow delete: if isAdmin();
+    }
+
+    // 2. Orders database rules
+    match /orders/{orderId} {
+      // Only admins can list, fetch or delete orders
+      allow read, delete: if isAdmin();
+      
+      // Anyone can submit a purchase order
+      allow create: if isValidId(orderId)
+        && isValidOrder(request.resource.data)
+        && request.resource.data.id == orderId;
+
+      // Only admins can modify order status or tracking details
+      allow update: if isAdmin()
+        && isValidId(orderId)
+        && isValidOrder(request.resource.data)
+        && request.resource.data.id == resource.data.id;
+    }
+  }
+}

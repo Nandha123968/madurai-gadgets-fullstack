@@ -1,0 +1,6 @@
+{
+  "name": "Madurai Gadgets 58",
+  "description": "Premium mastercopy watches with first class premium designs at affordable prices.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}

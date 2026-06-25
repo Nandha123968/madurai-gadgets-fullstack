@@ -1,0 +1,109 @@
+{
+  "entities": {
+    "product": {
+      "title": "Product",
+      "description": "Represents a premium gadget or replica watch item in the store catalog.",
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "Unique reference ID for the product"
+        },
+        "name": {
+          "type": "string",
+          "description": "The title/name of the product"
+        },
+        "price": {
+          "type": "number",
+          "description": "Price in INR"
+        },
+        "rating": {
+          "type": "number",
+          "description": "Product rating between 1 and 5"
+        },
+        "reviewsCount": {
+          "type": "number",
+          "description": "Total count of reviews"
+        },
+        "category": {
+          "type": "string",
+          "description": "E.g. Premier Watches, Japanese Model Watches, Bluetooth Speakers, Sunglasses"
+        },
+        "description": {
+          "type": "string",
+          "description": "Description details of the product"
+        },
+        "specs": {
+          "type": "array",
+          "description": "Technical specifications bullet points"
+        },
+        "image": {
+          "type": "string",
+          "description": "Base64 data-uri or reference key of product artwork"
+        },
+        "stock": {
+          "type": "number",
+          "description": "Remaining stock count in warehouse"
+        },
+        "gender": {
+          "type": "string",
+          "enum": ["Men", "Women", "Unisex"]
+        }
+      },
+      "required": ["id", "name", "price", "category", "description", "stock"]
+    },
+    "order": {
+      "title": "Order",
+      "description": "Represents an e-commerce customer purchase order.",
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "Order reference ID (e.g. MG-8293)"
+        },
+        "items": {
+          "type": "array",
+          "description": "List of cart item items including product and quantity"
+        },
+        "total": {
+          "type": "number",
+          "description": "Total paid amount"
+        },
+        "discount": {
+          "type": "number",
+          "description": "Applied discount amount"
+        },
+        "shipping": {
+          "type": "object",
+          "description": "Customer shipping details"
+        },
+        "date": {
+          "type": "string",
+          "description": "Readable purchase date"
+        },
+        "status": {
+          "type": "string",
+          "enum": ["Processing", "Shipped", "Delivered"]
+        },
+        "paymentStatus": {
+          "type": "string",
+          "enum": ["Unpaid", "Paid"]
+        },
+        "stCourierId": {
+          "type": "string"
+        }
+      },
+      "required": ["id", "items", "total", "shipping", "date", "status"]
+    }
+  },
+  "firestore": {
+    "products/{productId}": {
+      "schema": "product",
+      "description": "Global active product catalog"
+    },
+    "orders/{orderId}": {
+      "schema": "order",
+      "description": "E-commerce customer purchase orders list"
+    }
+  }
+}
