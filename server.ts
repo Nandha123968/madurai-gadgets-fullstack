@@ -8,6 +8,12 @@ import cors from "cors";
 import bcrypt from "bcryptjs";
 import jwt from "jsonwebtoken";
 
+// ==========================================
+// NEW: SECURITY PACKAGES 🛡️
+// ==========================================
+import helmet from "helmet";
+import { rateLimit } from "express-rate-limit";
+
 const JWT_SECRET = process.env.JWT_SECRET || "madurai_gadgets_super_secret";
 
 // Load environment variables
@@ -16,8 +22,34 @@ dotenv.config();
 const app = express();
 const PORT = 3000;
 
+// ==========================================
+// HIGH SECURITY & SHIELD CONFIGURATION 🛡️
+// ==========================================
+
+// 1. Helmet: HTTP headers-ah hide panni XSS, Clickjacking mathiri attacks-ah thadukkum.
+app.use(helmet()); 
+
 app.use(cors());
-app.use(express.json());
+
+// 2. Payload Limit: Hacker periya data anuppi server-ah crash pannaama irukka limit (10kb) set panrom.
+app.use(express.json({ limit: '10kb' })); 
+
+// 3. Rate Limiter: DDoS & Spam Bot Protection. 
+// Oru IP-la irunthu 15 nimishathukku 100 API requests thaan panna mudiyum.
+const apiLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000, // 15 Minutes window
+  limit: 100, 
+  message: { 
+    success: false, 
+    message: "Too many requests from this IP, machan! Server shield activated. Try again after 15 minutes. 🛑" 
+  },
+  standardHeaders: 'draft-7',
+  legacyHeaders: false,
+});
+
+// Intha shield-ah namma API routes ellathukkum apply panrom
+app.use("/api/", apiLimiter);
+
 
 // ==========================================
 // MySQL Database Connection (Aiven MySQL)
@@ -374,11 +406,7 @@ app.get("/api/products", (req, res) => {
         { color: "#2563EB", image: "nautilus" },
         { color: "#F9FAFB", image: "https://images.unsplash.com/photo-1539874754764-5a96559165b0?q=80&w=600&auto=format&fit=crop" }
       ] : p.id === "p4" ? [
-        { color: "#059669", image: "https://images.unsplash.com/photo-1622434641406-a158123450f9?q=80&w=600&auto=format&fit=crop" },
-        { color: "#111827", image: "submariner" }
-      ] : p.id === "p5" ? [
-        { color: "#1E40AF", image: "seamaster" },
-        { color: "#4B5563", image: "https://images.unsplash.com/photo-1542496658-e33a6d0d50f6?q=80&w=600&auto=format&fit=crop" }
+        { color: "#059669", image: "https://images.unsplash.com/photo-1622434641406-a158123450f9?q=80&w=600&auto=format&fit=crop" }
       ] : []
     }));
     res.json(fallbackList);
@@ -654,7 +682,7 @@ async function startServer() {
   }
 
   app.listen(PORT, "0.0.0.0", () => {
-    console.log(`Express custom server running at http://0.0.0.0:${PORT}`);
+    console.log(`Express custom server running at http://0.0.0.0:${PORT} 🚀🛡️`);
   });
 }
 
