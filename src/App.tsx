@@ -1462,26 +1462,26 @@ My order is registered in the tracker with reference *${orderId}*. Thank you! �
                 <div className="absolute inset-0 z-0 select-none">
                   <img src={customHeroImage} alt="Hero Backdrop" className="w-full h-full object-cover opacity-10 filter blur-[1px]" referrerPolicy="no-referrer" />
                   <div className="absolute inset-0 bg-gradient-to-r from-white via-white/85 to-transparent"></div>
-                  <div className="absolute inset-0 bg-gradient-to-t from-white via-transparent to-transparent"></div>
-                </div>
-              )}
- 
-              <div className="max-w-3xl mx-auto text-center relative z-10 space-y-6 sm:space-y-8 flex flex-col items-center">
-                <div className="space-y-2.5 sm:space-y-4">
-                  <span className="text-[8px] sm:text-[10px] uppercase tracking-[0.15em] sm:tracking-[0.4em] text-yellow-600 block font-mono font-bold">⚡ WELCOME TO THE FUTURE OF WATCH COLLECTION</span>
-                  <h1 className="select-none flex flex-col pt-1 font-syne uppercase">
-                    <span className="text-yellow-600 font-extrabold tracking-tight text-3xl xs:text-4xl sm:text-7xl lg:text-8xl leading-[1.1] mb-1 sm:mb-3 drop-shadow-sm">
-                      Madurai Gadgets
-                    </span>
-                    <span className="block text-zinc-900 font-bold tracking-[0.05em] text-lg xs:text-2xl sm:text-4xl lg:text-5xl leading-tight">
-                      Wear Peak
-                    </span>
-                    <span className="block text-zinc-500 font-light tracking-[0.1em] sm:tracking-[0.2em] text-[10px] sm:text-sm lg:text-base mt-1.5 sm:mt-2">
-                      Master Your Style
-                    </span>
-                  </h1>
-                </div>
- 
+                 {/* Animated Flowing Gold Hero Text */}
+  <p className="text-yellow-600 text-xs md:text-sm font-bold tracking-[0.3em] uppercase mb-4 animate-fade-in">
+    ✦ Welcome to the future of watch collection ✦
+  </p>
+
+  <h1 className="text-5xl md:text-7xl font-black uppercase tracking-tighter text-transparent bg-clip-text bg-gradient-to-r from-yellow-500 via-yellow-600 to-yellow-500 bg-[length:200%_auto] animate-[pulse_4s_ease-in-out_infinite] hover:scale-105 transition-transform duration-700 ease-out cursor-pointer">
+    MADURAI <br /> GADGETS
+  </h1>
+
+  <h2 className="text-3xl md:text-4xl font-extrabold text-gray-900 tracking-widest mt-6 animate-fade-in-up">
+    WEAR PEAK
+  </h2>
+  
+  <p className="text-gray-500 text-sm md:text-base font-medium tracking-widest uppercase mt-2">
+    MASTER YOUR STYLE
+  </p>
+
+  <p className="max-w-xl mx-auto text-gray-600 mt-6 leading-relaxed text-sm animate-fade-in">
+    Premium mastercopy watches with first-class premium design at affordable price. Grab custom automatic, luxury chronograph, and sport diving watch copies.
+  </p>
                 <p className="text-zinc-650 text-xs sm:text-sm leading-relaxed max-w-lg font-sans font-medium mx-auto">
                   premium mastercopy watches with first class premium design at affordable price. Grab custom automatic, luxury chronograph, and sport diving watch copies.
                 </p>
