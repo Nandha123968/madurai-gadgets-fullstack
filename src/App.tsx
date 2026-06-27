@@ -1332,10 +1332,10 @@ My order is registered in the tracker with reference *${orderId}*. Thank you! �
       {/* Dynamic Golden Yellow Announcement Scrolling Marquee Ticker */}
       <div className="bg-yellow-400 text-gray-950 py-2.5 border-b border-yellow-500 overflow-hidden relative select-none z-45">
         <div className="animate-marquee whitespace-nowrap gap-12 font-mono text-[10px] sm:text-xs font-black uppercase tracking-widest flex items-center">
-          <span>⚡ SALE IS ON! FLAT {discountPercent}% INSTANT DISCOUNT APPLIED STORE-WIDE ON CHECKOUT! USE PROMO CODE: "MACHAN" TO SECURE EXTRA 15% OFF! ✦</span>
-          <span>⚡ SALE IS ON! FLAT {discountPercent}% INSTANT DISCOUNT APPLIED STORE-WIDE ON CHECKOUT! USE PROMO CODE: "MACHAN" TO SECURE EXTRA 15% OFF! ✦</span>
-          <span>⚡ SALE IS ON! FLAT {discountPercent}% INSTANT DISCOUNT APPLIED STORE-WIDE ON CHECKOUT! USE PROMO CODE: "MACHAN" TO SECURE EXTRA 15% OFF! ✦</span>
-          <span>⚡ SALE IS ON! FLAT {discountPercent}% INSTANT DISCOUNT APPLIED STORE-WIDE ON CHECKOUT! USE PROMO CODE: "MACHAN" TO SECURE EXTRA 15% OFF! ✦</span>
+          <span>⚡ SALE IS ON! FLAT {discountPercent}% INSTANT DISCOUNT APPLIED STORE-WIDE ON CHECKOUT! USE PROMO CODE: "MACHAN" TO SECURE EXTRA OFF! ✦</span>
+          <span>⚡ SALE IS ON! FLAT {discountPercent}% INSTANT DISCOUNT APPLIED STORE-WIDE ON CHECKOUT! USE PROMO CODE: "MACHAN" TO SECURE EXTRA OFF! ✦</span>
+          <span>⚡ SALE IS ON! FLAT {discountPercent}% INSTANT DISCOUNT APPLIED STORE-WIDE ON CHECKOUT! USE PROMO CODE: "MACHAN" TO SECURE EXTRA OFF! ✦</span>
+          <span>⚡ SALE IS ON! FLAT {discountPercent}% INSTANT DISCOUNT APPLIED STORE-WIDE ON CHECKOUT! USE PROMO CODE: "MACHAN" TO SECURE EXTRAe OFF! ✦</span>
         </div>
       </div>
 
