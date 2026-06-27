@@ -1342,9 +1342,9 @@ My order is registered in the tracker with reference *${orderId}*. Thank you! �
       {/* Floating active discount banner display on top! */}
       {discountPercent > 0 && (
         <div className="bg-gradient-to-r from-red-650 via-amber-600 to-red-650 text-white text-center py-1.5 text-[9px] sm:text-[11px] font-black uppercase tracking-widest shadow-inner z-45 relative flex items-center justify-center gap-2">
-          <span className="inline-block animate-bounce">🎉</span>
+          <span className="inline-block animate-bounce"></span>
           <span>SPECIAL CODE ACTIVE: INSTANT {discountPercent}% OFF APPLIED ON ALL YOUR PRODUCTS ON CHECKOUT!</span>
-          <span className="inline-block animate-bounce">🎉</span>
+          <span className="inline-block animate-bounce"></span>
         </div>
       )}
 

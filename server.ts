@@ -8,6 +8,12 @@ import cors from "cors";
 import bcrypt from "bcryptjs";
 import jwt from "jsonwebtoken";
 
+// ==========================================
+// NEW: SECURITY PACKAGES 🛡️
+// ==========================================
+import helmet from "helmet";
+import { rateLimit } from "express-rate-limit";
+
 const JWT_SECRET = process.env.JWT_SECRET || "madurai_gadgets_super_secret";
 
 // Load environment variables
@@ -16,188 +22,222 @@ dotenv.config();
 const app = express();
 const PORT = 3000;
 
+// ==========================================
+// HIGH SECURITY & SHIELD CONFIGURATION 🛡️
+// ==========================================
+
+// 1. Helmet: HTTP headers-ah hide panni XSS, Clickjacking mathiri attacks-ah thadukkum.
+app.use(helmet()); 
+
 app.use(cors());
-app.use(express.json());
+
+// 2. Payload Limit: Hacker periya data anuppi server-ah crash pannaama irukka limit (10kb) set panrom.
+app.use(express.json({ limit: '10kb' })); 
+
+// 3. Rate Limiter: DDoS & Spam Bot Protection. 
+// Oru IP-la irunthu 15 nimishathukku 100 API requests thaan panna mudiyum.
+const apiLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000, // 15 Minutes window
+  limit: 100, 
+  message: { 
+    success: false, 
+    message: "Too many requests from this IP, machan! Server shield activated. Try again after 15 minutes. 🛑" 
+  },
+  standardHeaders: 'draft-7',
+  legacyHeaders: false,
+});
+
+// Intha shield-ah namma API routes ellathukkum apply panrom
+app.use("/api/", apiLimiter);
+
 
 // ==========================================
 // MySQL Database Connection (Aiven MySQL)
 // ==========================================
-let db: mysql.Connection | null = null;
+let db: any = null; // Changed to 'any' to avoid TypeScript errors with Pool
 
 if (process.env.DB_HOST) {
-  try {
-    db = mysql.createConnection({
-      host: process.env.DB_HOST,
-      user: process.env.DB_USER,
-      password: process.env.DB_PASSWORD,
-      database: process.env.DB_NAME,
-      port: process.env.DB_PORT ? Number(process.env.DB_PORT) : 3306,
-      ssl: { rejectUnauthorized: false }
-    });
+    try {
+        db = mysql.createPool({
+            host: process.env.DB_HOST,
+            user: process.env.DB_USER,
+            password: process.env.DB_PASSWORD,
+            database: process.env.DB_NAME,
+            port: process.env.DB_PORT ? Number(process.env.DB_PORT) : 3306,
+            ssl: { rejectUnauthorized: false },
+            waitForConnections: true,
+            connectionLimit: 10,
+            queueLimit: 0
+        });
 
-    db.connect((err) => {
-      if (err) {
-        console.error("MySQL Database connection error ❌: ", err);
+        db.getConnection((err: any, connection: any) => {
+            if (err) {
+                console.error("MySQL Pool connection error ❌: ", err);
+            } else {
+                console.log("MySQL Database Pool Connected Successfully! 🔥");
+                connection.release();
+            }
+        });
+    } catch (e) {
+        console.error("Failed to initialize MySQL Connection", e);
         db = null;
-      } else {
-        console.log("MySQL Database Connected Successfully! 🔥");
-        
-        // Automatic-ah Products Table Create Panna Code
-        const createTableQuery = `
-          CREATE TABLE IF NOT EXISTS products (
+    }
+} else {
+    console.log("No MySQL connection environment variables found. Using default products.");
+}
+
+// ==========================================
+// Automatic-ah Database Tables Create Panna Code
+// ==========================================
+if (db) {
+    const createTableQuery = `
+        CREATE TABLE IF NOT EXISTS products (
             id INT AUTO_INCREMENT PRIMARY KEY,
             name VARCHAR(255) NOT NULL,
             price DECIMAL(10, 2) NOT NULL,
             description TEXT,
             image_url VARCHAR(500) NOT NULL,
             created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-          )
-        `;
-        db!.query(createTableQuery, (err, result) => {
-          if (err) {
+        )
+    `;
+    
+    db.query(createTableQuery, (err: any, result: any) => {
+        if (err) {
             console.error("Table create aagala ❌:", err);
-          } else {
+        } else {
             console.log("Products Table Ready aagiduchu! 📦");
 
-            // Safely check and add columns category, stock, specs, gender, brand if they don't exist
+            // Safely check and add columns
             const columnsToCheck = [
-              { name: "category", query: "ALTER TABLE products ADD COLUMN category VARCHAR(255) DEFAULT 'Premier Watches'" },
-              { name: "stock", query: "ALTER TABLE products ADD COLUMN stock INT DEFAULT 15" },
-              { name: "specs", query: "ALTER TABLE products ADD COLUMN specs TEXT NULL" },
-              { name: "gender", query: "ALTER TABLE products ADD COLUMN gender VARCHAR(50) DEFAULT 'Unisex'" },
-              { name: "brand", query: "ALTER TABLE products ADD COLUMN brand VARCHAR(255) DEFAULT 'Other'" }
+                { name: "category", query: "ALTER TABLE products ADD COLUMN category VARCHAR(255) DEFAULT 'Premier Watches'" },
+                { name: "stock", query: "ALTER TABLE products ADD COLUMN stock INT DEFAULT 15" },
+                { name: "specs", query: "ALTER TABLE products ADD COLUMN specs TEXT NULL" },
+                { name: "gender", query: "ALTER TABLE products ADD COLUMN gender VARCHAR(50) DEFAULT 'Unisex'" },
+                { name: "brand", query: "ALTER TABLE products ADD COLUMN brand VARCHAR(255) DEFAULT 'Other'" }
             ];
             
             columnsToCheck.forEach((col) => {
-              db!.query(`SHOW COLUMNS FROM products LIKE ?`, [col.name], (errCol, rows: any) => {
-                if (!errCol && rows && rows.length === 0) {
-                  db!.query(col.query, (errAlter) => {
-                    if (errAlter) {
-                      console.error(`Error adding column ${col.name}:`, errAlter);
-                    } else {
-                      console.log(`Column ${col.name} added successfully to products table!`);
+                db.query(`SHOW COLUMNS FROM products LIKE ?`, [col.name], (errCol: any, rows: any) => {
+                    if (!errCol && rows && rows.length === 0) {
+                        db.query(col.query, (errAlter: any) => {
+                            if (errAlter) console.error(`Error adding column ${col.name}:`, errAlter);
+                            else console.log(`Column ${col.name} added successfully to products table!`);
+                        });
                     }
-                  });
-                }
-              });
+                });
             });
 
-            // Automatic-ah Variations Table Create Panna Code
+            // Automatic-ah Variations Table
             const createVariationsQuery = `
-              CREATE TABLE IF NOT EXISTS product_variations (
-                id INT AUTO_INCREMENT PRIMARY KEY,
-                product_id INT,
-                color_name VARCHAR(50) NOT NULL,
-                color_code VARCHAR(50) NOT NULL,
-                image_url VARCHAR(500) NOT NULL,
-                FOREIGN KEY (product_id) REFERENCES products(id) ON DELETE CASCADE
-              )
-            `;
-            db!.query(createVariationsQuery, (errVarTable) => {
-              if (errVarTable) {
-                console.error("Variations table create aagala ❌:", errVarTable);
-              } else {
-                console.log("Product Variations Table Ready aagiduchu! 🎨");
-                
-                // Users Table
-                const createUsersQuery = `
-                  CREATE TABLE IF NOT EXISTS users (
+                CREATE TABLE IF NOT EXISTS product_variations (
                     id INT AUTO_INCREMENT PRIMARY KEY,
-                    name VARCHAR(255) NOT NULL,
-                    email VARCHAR(255) NOT NULL UNIQUE,
-                    password VARCHAR(255) NOT NULL,
-                    role VARCHAR(50) DEFAULT 'customer',
-                    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-                  )
-                `;
-                db!.query(createUsersQuery, (err) => {
-                  if (err) console.error("Users table create aagala ❌:", err);
-                  else console.log("Users Table Ready! 👥");
-                });
-
-                // Orders Table
-                const createOrdersQuery = `
-                  CREATE TABLE IF NOT EXISTS orders (
-                    id INT AUTO_INCREMENT PRIMARY KEY,
-                    user_id INT NOT NULL,
-                    total_amount DECIMAL(10, 2) NOT NULL,
-                    status VARCHAR(50) DEFAULT 'pending',
-                    shipping_address TEXT,
-                    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-                    FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
-                  )
-                `;
-                db!.query(createOrdersQuery, (err) => {
-                  if (err) console.error("Orders table create aagala ❌:", err);
-                  else console.log("Orders Table Ready! 🛍️");
-                });
-
-                // Order Items Table
-                const createOrderItemsQuery = `
-                  CREATE TABLE IF NOT EXISTS order_items (
-                    id INT AUTO_INCREMENT PRIMARY KEY,
-                    order_id INT NOT NULL,
-                    product_id INT NOT NULL,
-                    quantity INT NOT NULL DEFAULT 1,
-                    price DECIMAL(10, 2) NOT NULL,
-                    FOREIGN KEY (order_id) REFERENCES orders(id) ON DELETE CASCADE,
+                    product_id INT,
+                    color_name VARCHAR(50) NOT NULL,
+                    color_code VARCHAR(50) NOT NULL,
+                    image_url VARCHAR(500) NOT NULL,
                     FOREIGN KEY (product_id) REFERENCES products(id) ON DELETE CASCADE
-                  )
-                `;
-                db!.query(createOrderItemsQuery, (err) => {
-                  if (err) console.error("Order items table create aagala ❌:", err);
-                  else console.log("Order Items Table Ready! 📦");
-                });
-
-                
-                // One-time deletion of dummy/test products to keep the store fresh
-                const dummyNames = [
-                  'Cosmograph Daytona Mastercopy',
-                  'Royal Oak Automatic High Copy',
-                  'Nautilus Blue Dial Mastercopy',
-                  'Submariner Date Ceramic Copy',
-                  'Seamaster 300M Master Plan',
-                  'Classic Roman Heritage Quartz',
-                  'sunglasses test',
-                  'OMEGA SEAMASTER AQUA TERRA'
-                ];
-                db!.query("DELETE FROM products WHERE name IN (?)", [dummyNames], (errDel) => {
-                  if (errDel) {
-                    console.error("Error cleaning dummy/test products:", errDel);
-                  } else {
-                    console.log("Dummy/test products cleaned successfully! 🧼");
+                )
+            `;
+            db.query(createVariationsQuery, (errVarTable: any) => {
+                if (errVarTable) console.error("Variations table create aagala ❌:", errVarTable);
+                else {
+                    console.log("Product Variations Table Ready aagiduchu! 🎨");
                     
-                    // Cleanup any Jacob & Co / Jacon products to satisfy the user's request
-                    const deleteJacobQuery = `
-                      DELETE FROM products 
-                      WHERE LOWER(name) LIKE '%jacob%' 
-                         OR LOWER(name) LIKE '%jacon%' 
-                         OR LOWER(brand) LIKE '%jacob%' 
-                         OR LOWER(brand) LIKE '%jacon%'
-                         OR LOWER(category) LIKE '%jacob%'
-                         OR LOWER(category) LIKE '%jacon%'
+                    // Users Table
+                    const createUsersQuery = `
+                        CREATE TABLE IF NOT EXISTS users (
+                            id INT AUTO_INCREMENT PRIMARY KEY,
+                            name VARCHAR(255) NOT NULL,
+                            email VARCHAR(255) NOT NULL UNIQUE,
+                            password VARCHAR(255) NOT NULL,
+                            role VARCHAR(50) DEFAULT 'customer',
+                            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+                        )
                     `;
-                    db!.query(deleteJacobQuery, (errJacob, resJacob: any) => {
-                      if (errJacob) {
-                        console.error("Failed to delete Jacob products:", errJacob);
-                      } else if (resJacob) {
-                        console.log(`Deleted ${resJacob.affectedRows} Jacob/Jacon products from DB! 🧼`);
-                      }
+                    db.query(createUsersQuery, (errUsr: any) => {
+                        if (errUsr) console.error("Users table create aagala ❌:", errUsr);
+                        else {
+                            console.log("Users Table Ready! 👥");
+
+                            // Orders Table
+                            const createOrdersQuery = `
+                                CREATE TABLE IF NOT EXISTS orders (
+                                    id INT AUTO_INCREMENT PRIMARY KEY,
+                                    user_id INT NOT NULL,
+                                    total_amount DECIMAL(10, 2) NOT NULL,
+                                    status VARCHAR(50) DEFAULT 'pending',
+                                    shipping_address TEXT,
+                                    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                                    FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+                                )
+                            `;
+                            db.query(createOrdersQuery, (errOrd: any) => {
+                                if (errOrd) console.error("Orders table create aagala ❌:", errOrd);
+                                else {
+                                    console.log("Orders Table Ready! 🛍️");
+
+                                    // Order Items Table
+                                    const createOrderItemsQuery = `
+                                        CREATE TABLE IF NOT EXISTS order_items (
+                                            id INT AUTO_INCREMENT PRIMARY KEY,
+                                            order_id INT NOT NULL,
+                                            product_id INT NOT NULL,
+                                            quantity INT NOT NULL DEFAULT 1,
+                                            price DECIMAL(10, 2) NOT NULL,
+                                            FOREIGN KEY (order_id) REFERENCES orders(id) ON DELETE CASCADE,
+                                            FOREIGN KEY (product_id) REFERENCES products(id) ON DELETE CASCADE
+                                        )
+                                    `;
+                                    db.query(createOrderItemsQuery, (errItm: any) => {
+                                        if (errItm) console.error("Order items table create aagala ❌:", errItm);
+                                        else {
+                                            console.log("Order Items Table Ready! 📦");
+                                            
+                                            // One-time deletion of dummy/test products
+                                            const dummyNames = [
+                                                'Cosmograph Daytona Mastercopy',
+                                                'Royal Oak Automatic High Copy',
+                                                'Nautilus Blue Dial Mastercopy',
+                                                'Submariner Date Ceramic Copy',
+                                                'Seamaster 300M Master Plan',
+                                                'Classic Roman Heritage Quartz',
+                                                'sunglasses test',
+                                                'OMEGA SEAMASTER AQUA TERRA'
+                                            ];
+                                            db.query("DELETE FROM products WHERE name IN (?)", [dummyNames], (errDel: any) => {
+                                                if (errDel) console.error("Error cleaning dummy/test products:", errDel);
+                                                else {
+                                                    console.log("Dummy/test products cleaned successfully! 🧼");
+                                                    
+                                                    // Cleanup Jacob & Co products
+                                                    const deleteJacobQuery = `
+                                                        DELETE FROM products 
+                                                        WHERE LOWER(name) LIKE '%jacob%' 
+                                                           OR LOWER(name) LIKE '%jacon%' 
+                                                           OR LOWER(brand) LIKE '%jacob%' 
+                                                           OR LOWER(brand) LIKE '%jacon%'
+                                                           OR LOWER(category) LIKE '%jacob%'
+                                                           OR LOWER(category) LIKE '%jacon%'
+                                                    `;
+                                                    db.query(deleteJacobQuery, (errJacob: any, resJacob: any) => {
+                                                        if (errJacob) {
+                                                            console.error("Failed to delete Jacob products:", errJacob);
+                                                        } else if (resJacob) {
+                                                            console.log(`Deleted ${resJacob.affectedRows} Jacob/Jacon products from DB! 🧼`);
+                                                        }
+                                                    });
+                                                }
+                                            });
+                                        }
+                                    });
+                                }
+                            });
+                        }
                     });
-                  }
-                });
-              }
+                }
             });
-          }
-        });
-      }
+        }
     });
-  } catch (e) {
-    console.error("Failed to initialize MySQL Connection", e);
-    db = null;
-  }
-} else {
-  console.log("No MySQL connection environment variables found. Using default products.");
 }
 
 // List of products to guide the AI chatbot
@@ -291,7 +331,7 @@ Personality & Directives:
 // API routes
 app.get("/api/products", (req, res) => {
   if (db) {
-    db.query("SELECT * FROM products ORDER BY id DESC", (err, productsList: any) => {
+    db.query("SELECT * FROM products ORDER BY id DESC", (err: any, productsList: any) => {
       if (err) {
         console.error("Error fetching from MySQL:", err);
         // Fallback to defaults
@@ -321,7 +361,7 @@ app.get("/api/products", (req, res) => {
         return res.json(fallbackList);
       }
       
-      db!.query("SELECT * FROM product_variations", (errVar, variationsList: any) => {
+      db.query("SELECT * FROM product_variations", (errVar: any, variationsList: any) => {
         if (errVar) {
           console.error("Error fetching variations:", errVar);
           return res.json(productsList.map((p: any) => ({ ...p, variations: [] })));
@@ -366,11 +406,7 @@ app.get("/api/products", (req, res) => {
         { color: "#2563EB", image: "nautilus" },
         { color: "#F9FAFB", image: "https://images.unsplash.com/photo-1539874754764-5a96559165b0?q=80&w=600&auto=format&fit=crop" }
       ] : p.id === "p4" ? [
-        { color: "#059669", image: "https://images.unsplash.com/photo-1622434641406-a158123450f9?q=80&w=600&auto=format&fit=crop" },
-        { color: "#111827", image: "submariner" }
-      ] : p.id === "p5" ? [
-        { color: "#1E40AF", image: "seamaster" },
-        { color: "#4B5563", image: "https://images.unsplash.com/photo-1542496658-e33a6d0d50f6?q=80&w=600&auto=format&fit=crop" }
+        { color: "#059669", image: "https://images.unsplash.com/photo-1622434641406-a158123450f9?q=80&w=600&auto=format&fit=crop" }
       ] : []
     }));
     res.json(fallbackList);
@@ -394,7 +430,7 @@ app.post("/api/products", (req, res) => {
   }
 
   const sqlInsert = "INSERT INTO products (name, price, description, image_url, category, stock, specs, gender, brand) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)";
-  db.query(sqlInsert, [name, price, description, image_url, category || "Premier Watches", stock || 15, formattedSpecs, gender || "Unisex", brand || "Other"], (err, result: any) => {
+  db.query(sqlInsert, [name, price, description, image_url, category || "Premier Watches", stock || 15, formattedSpecs, gender || "Unisex", brand || "Other"], (err: any, result: any) => {
     if (err) {
       console.error(err);
       return res.status(500).json({ error: "Product save aagala macha" });
@@ -410,7 +446,7 @@ app.post("/api/products", (req, res) => {
         v.image_url || v.image || image_url
       ]);
       
-      db!.query("INSERT INTO product_variations (product_id, color_name, color_code, image_url) VALUES ?", [variationInserts], (errVar) => {
+      db.query("INSERT INTO product_variations (product_id, color_name, color_code, image_url) VALUES ?", [variationInserts], (errVar: any) => {
         if (errVar) {
           console.error("Error saving variations:", errVar);
         }
@@ -448,7 +484,7 @@ app.put("/api/products/:id", (req, res) => {
   db.query(
     sqlUpdate, 
     [name, price, description, image_url, category || "Premier Watches", stock || 15, formattedSpecs, gender || "Unisex", brand || "Other", productId], 
-    (err, result: any) => {
+    (err: any, result: any) => {
       if (err) {
         console.error("Error updating product in MySQL:", err);
         return res.status(500).json({ error: "Product update failed in MySQL" });
@@ -467,7 +503,7 @@ app.delete("/api/products/:id", (req, res) => {
   }
 
   const sqlDelete = "DELETE FROM products WHERE id = ?";
-  db.query(sqlDelete, [productId], (err, result) => {
+  db.query(sqlDelete, [productId], (err: any, result: any) => {
     if (err) {
       console.error("Error deleting product from MySQL:", err);
       return res.status(500).json({ error: "Product delete failed in MySQL" });
@@ -487,7 +523,7 @@ app.post("/api/auth/register", async (req, res) => {
 
   try {
     const hashedPassword = await bcrypt.hash(password, 10);
-    db.query("INSERT INTO users (name, email, password) VALUES (?, ?, ?)", [name, email, hashedPassword], (err, result: any) => {
+    db.query("INSERT INTO users (name, email, password) VALUES (?, ?, ?)", [name, email, hashedPassword], (err: any, result: any) => {
       if (err) {
         if (err.code === 'ER_DUP_ENTRY') return res.status(400).json({ error: "Email already exists" });
         return res.status(500).json({ error: "Registration failed" });
@@ -504,7 +540,7 @@ app.post("/api/auth/login", (req, res) => {
   const { email, password } = req.body;
   if (!db) return res.status(500).json({ error: "Database not connected" });
 
-  db.query("SELECT * FROM users WHERE email = ?", [email], async (err, results: any[]) => {
+  db.query("SELECT * FROM users WHERE email = ?", [email], async (err: any, results: any[]) => {
     if (err || !results || results.length === 0) return res.status(400).json({ error: "Invalid email or password" });
 
     const user = results[0];
@@ -526,13 +562,13 @@ app.post("/api/orders", (req, res) => {
   db.query(
     "INSERT INTO orders (user_id, total_amount, shipping_address) VALUES (?, ?, ?)",
     [user_id, total_amount, shipping_address || ""],
-    (err, result: any) => {
+    (err: any, result: any) => {
       if (err) return res.status(500).json({ error: "Order creation failed" });
       
       const orderId = result.insertId;
       const orderItemsData = items.map((item: any) => [orderId, item.product_id, item.quantity, item.price]);
       
-      db!.query("INSERT INTO order_items (order_id, product_id, quantity, price) VALUES ?", [orderItemsData], (errItems) => {
+      db.query("INSERT INTO order_items (order_id, product_id, quantity, price) VALUES ?", [orderItemsData], (errItems: any) => {
         if (errItems) return res.status(500).json({ error: "Failed to save order items" });
         res.status(201).json({ message: "Order placed successfully", orderId });
       });
@@ -545,7 +581,7 @@ app.get("/api/orders/:userId", (req, res) => {
   const { userId } = req.params;
   if (!db) return res.status(500).json({ error: "Database not connected" });
 
-  db.query("SELECT * FROM orders WHERE user_id = ? ORDER BY created_at DESC", [userId], (err, orders: any[]) => {
+  db.query("SELECT * FROM orders WHERE user_id = ? ORDER BY created_at DESC", [userId], (err: any, orders: any[]) => {
     if (err) return res.status(500).json({ error: "Failed to fetch orders" });
     res.json(orders);
   });
@@ -614,6 +650,19 @@ app.post("/api/chat", async (req, res) => {
   }
 });
 
+// ==========================================
+// Global Error Handler Middleware
+// ==========================================
+app.use((err: any, req: any, res: any, next: any) => {
+    console.error("Critical Server Error 🚨: ", err.stack);
+    
+    res.status(500).json({
+        success: false,
+        message: "Something went wrong on the server, but we are still alive! 🔥",
+        error: process.env.NODE_ENV === 'development' ? err.message : {}
+    });
+});
+
 // Configure Vite middleware or production build output
 async function startServer() {
   if (process.env.NODE_ENV !== "production") {
@@ -624,16 +673,16 @@ async function startServer() {
     });
     app.use(vite.middlewares);
   } else {
-    console.log("Production state: serving compiled static assets from dist/...");
-    const distPath = path.join(process.cwd(), "dist");
-    app.use(express.static(distPath));
-    app.get("*", (req, res) => {
-      res.sendFile(path.join(distPath, "index.html"));
-    });
+   // console.log("Production state: serving compiled static assets from dist/...");
+    //const distPath = path.join(process.cwd(), "dist");
+    //app.use(express.static(distPath));
+    //app.get("*", (req, res) => {
+      //res.sendFile(path.join(distPath, "index.html"));
+    //});
   }
 
   app.listen(PORT, "0.0.0.0", () => {
-    console.log(`Express custom server running at http://0.0.0.0:${PORT}`);
+    console.log(`Express custom server running at http://0.0.0.0:${PORT} 🚀🛡️`);
   });
 }
 
