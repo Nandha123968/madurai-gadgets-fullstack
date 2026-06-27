@@ -1329,17 +1329,17 @@ My order is registered in the tracker with reference *${orderId}*. Thank you! �
         )}
       </AnimatePresence>
 
-     {/* Animated Flowing Discount Banner */}
+      {/* Animated Flowing Discount Banner */}
 <div className="w-full z-50 bg-gradient-to-r from-yellow-400 via-yellow-500 to-yellow-400 bg-[length:200%_auto] animate-[pulse_3s_ease-in-out_infinite] text-black font-extrabold text-center py-3 text-xs md:text-sm tracking-widest shadow-md border-b-2 border-yellow-600">
-  ⚡ SALE IS ON! FLAT INSTANT DISCOUNT ON ALL WATCHES! USE PROMO CODE: <span className="bg-black text-yellow-400 px-2 py-0.5 rounded ml-1 animate-bounce inline-block">MADURAI</span> ⚡
+  ⚡ SALE IS ON! FLAT INSTANT DISCOUNT ON ALL WATCHES! USE PROMO CODE: <span className="bg-black text-yellow-400 px-2 py-0.5 rounded ml-1 animate-bounce inline-block">MACHAN</span> ⚡
 </div>
 
       {/* Floating active discount banner display on top! */}
       {discountPercent > 0 && (
         <div className="bg-gradient-to-r from-red-650 via-amber-600 to-red-650 text-white text-center py-1.5 text-[9px] sm:text-[11px] font-black uppercase tracking-widest shadow-inner z-45 relative flex items-center justify-center gap-2">
-          <span className="inline-block animate-bounce">🎉</span>
+          <span className="inline-block animate-bounce"></span>
           <span>SPECIAL CODE ACTIVE: INSTANT {discountPercent}% OFF APPLIED ON ALL YOUR PRODUCTS ON CHECKOUT!</span>
-          <span className="inline-block animate-bounce">🎉</span>
+          <span className="inline-block animate-bounce"></span>
         </div>
       )}
 
