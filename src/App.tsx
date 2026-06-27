@@ -1329,15 +1329,10 @@ My order is registered in the tracker with reference *${orderId}*. Thank you! �
         )}
       </AnimatePresence>
 
-      {/* Dynamic Golden Yellow Announcement Scrolling Marquee Ticker */}
-      <div className="bg-yellow-400 text-gray-950 py-2.5 border-b border-yellow-500 overflow-hidden relative select-none z-45">
-        <div className="animate-marquee whitespace-nowrap gap-12 font-mono text-[10px] sm:text-xs font-black uppercase tracking-widest flex items-center">
-          <span>⚡ SALE IS ON! FLAT {discountPercent}% INSTANT DISCOUNT APPLIED STORE-WIDE ON CHECKOUT! USE PROMO CODE: "MACHAN" TO SECURE EXTRA 15% OFF! ✦</span>
-          <span>⚡ SALE IS ON! FLAT {discountPercent}% INSTANT DISCOUNT APPLIED STORE-WIDE ON CHECKOUT! USE PROMO CODE: "MACHAN" TO SECURE EXTRA 15% OFF! ✦</span>
-          <span>⚡ SALE IS ON! FLAT {discountPercent}% INSTANT DISCOUNT APPLIED STORE-WIDE ON CHECKOUT! USE PROMO CODE: "MACHAN" TO SECURE EXTRA 15% OFF! ✦</span>
-          <span>⚡ SALE IS ON! FLAT {discountPercent}% INSTANT DISCOUNT APPLIED STORE-WIDE ON CHECKOUT! USE PROMO CODE: "MACHAN" TO SECURE EXTRA 15% OFF! ✦</span>
-        </div>
-      </div>
+     {/* Animated Flowing Discount Banner */}
+<div className="w-full z-50 bg-gradient-to-r from-yellow-400 via-yellow-500 to-yellow-400 bg-[length:200%_auto] animate-[pulse_3s_ease-in-out_infinite] text-black font-extrabold text-center py-3 text-xs md:text-sm tracking-widest shadow-md border-b-2 border-yellow-600">
+  ⚡ SALE IS ON! FLAT INSTANT DISCOUNT ON ALL WATCHES! USE PROMO CODE: <span className="bg-black text-yellow-400 px-2 py-0.5 rounded ml-1 animate-bounce inline-block">MADURAI</span> ⚡
+</div>
 
       {/* Floating active discount banner display on top! */}
       {discountPercent > 0 && (
