@@ -30,11 +30,46 @@ const PORT = 3000;
 
 // 1. Helmet: HTTP headers-ah hide panni XSS, Clickjacking mathiri attacks-ah thadukkum.
 app.use(helmet({
-  contentSecurityPolicy: false
+  contentSecurityPolicy: false,
+  xssFilter: true,
+  noSniff: true,
+  hidePoweredBy: true
 })); 
 
 // Enable response compression (GZIP) for optimized payload delivery speeds
 app.use(compression());
+
+// 2. Custom WAF Security Shield: Detects and blocks SQL Injection and XSS bot payload scripts
+const sqlInjectionPattern = /('|--|\/\*|\*\/|union|select|insert|update|delete|drop|alter|where|or\s+1\s*=\s*1|having)/i;
+const xssPattern = /(<script|javascript:|onload|onerror|alert|eval|document\.)/i;
+
+const securityShield = (req: any, res: any, next: any) => {
+  const sanitize = (data: any): boolean => {
+    if (!data) return false;
+    if (typeof data === "string") {
+      if (sqlInjectionPattern.test(data) || xssPattern.test(data)) {
+        return true;
+      }
+    } else if (typeof data === "object") {
+      for (const key in data) {
+        if (sanitize(data[key])) {
+          return true;
+        }
+      }
+    }
+    return false;
+  };
+
+  if (sanitize(req.body) || sanitize(req.query) || sanitize(req.params)) {
+    console.warn(`[SECURITY SHIELD] Blocked request from IP ${req.ip} containing malicious payload! 🛡️`);
+    return res.status(403).json({
+      success: false,
+      message: "Security violation: Request blocked by system shield! 🛡️"
+    });
+  }
+  next();
+};
+app.use(securityShield);
 
 // Secure restricted CORS configuration
 const allowedOrigins = [
@@ -55,14 +90,14 @@ app.use(cors({
   credentials: true
 }));
 
-// 2. Payload Limit: Hacker periya data anuppi server-ah crash pannaama irukka limit (10kb) set panrom.
+// Payload Limit: Hacker periya data anuppi server-ah crash pannaama irukka limit (10kb) set panrom.
 app.use(express.json({ limit: '10kb' })); 
 
 // 3. Rate Limiter: DDoS & Spam Bot Protection. 
-// Oru IP-la irunthu 15 nimishathukku 100 API requests thaan panna mudiyum.
+// Oru IP-la irunthu 15 nimishathukku 300 API requests thaan panna mudiyum.
 const apiLimiter = rateLimit({
   windowMs: 15 * 60 * 1000, // 15 Minutes window
-  limit: 100, 
+  limit: 300, 
   message: { 
     success: false, 
     message: "Too many requests from this IP, machan! Server shield activated. Try again after 15 minutes. 🛑" 
