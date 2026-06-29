@@ -460,6 +460,51 @@ Please confirm availability and share GPay/PhonePe QR Code so I can secure it ri
     localStorage.setItem("aura_shop_cart", JSON.stringify(newCart));
   };
 
+  // WhatsApp Notification triggers
+  const sendWhatsAppReceipt = (ord: Order) => {
+    let cleanPhone = ord.shipping.phone?.replace(/\D/g, "") || "9585969334";
+    if (cleanPhone.length === 10) cleanPhone = "91" + cleanPhone;
+    else if (cleanPhone.startsWith("0") && cleanPhone.length === 11) cleanPhone = "91" + cleanPhone.substring(1);
+    else if (cleanPhone.length > 10) cleanPhone = "91" + cleanPhone.slice(-10);
+    else cleanPhone = "91" + cleanPhone;
+
+    const itemsText = ord.items.map(item => 
+      `◽ *${item.product.name}* (${item.quantity}x) - ₹${item.product.price.toLocaleString("en-IN")}`
+    ).join("\n");
+    
+    const whatsappMsg = `*MADURAI GADGETS 58 - OFFICIAL DIGITAL RECEIPT* 📜⌚\n--------------------------------------\nVanakkam Machan! Your payment has been successfully verified! 💳✅\n\n*CUSTOMER DETAILS:*\n👤 *Name:* ${ord.shipping.fullName}\n📞 *Phone:* ${ord.shipping.phone || "Not specified"}\n📍 *Delivery Address:* ${ord.shipping.address}, ${ord.shipping.city} - ${ord.shipping.zipCode}\n\n*ORDER REFERENCES:*\n🆔 *Invoice ID:* ${ord.id}\n📅 *Registered Date:* ${ord.date}\n🌟 *Fulfillment Status:* APPROVED & SHIPPING PREPARED 📦🚀\n💵 *Payment Status:* PAID ✦\n\n--------------------------------------\n*YOUR PURCHASE:*\n${itemsText}\n\n💰 *GRAND TOTAL:* ₹${ord.total.toLocaleString("en-IN")}\n--------------------------------------\nYour premium watch package is certified and ready for dispatch. Thank you for shopping with Madurai Gadgets 58! Wear Peak, Master Your Style! ☄️✨`;
+    
+    window.open(`https://wa.me/${cleanPhone}?text=${encodeURIComponent(whatsappMsg)}`, "_blank", "noopener,noreferrer");
+  };
+
+  const sendWhatsAppShipped = (ord: Order) => {
+    let cleanPhone = ord.shipping.phone?.replace(/\D/g, "") || "9585969334";
+    if (cleanPhone.length === 10) cleanPhone = "91" + cleanPhone;
+    else if (cleanPhone.startsWith("0") && cleanPhone.length === 11) cleanPhone = "91" + cleanPhone.substring(1);
+    else if (cleanPhone.length > 10) cleanPhone = "91" + cleanPhone.slice(-10);
+    else cleanPhone = "91" + cleanPhone;
+
+    const courierText = ord.stCourierId 
+      ? `Consignment ID: *${ord.stCourierId}* (ST Courier)`
+      : "Consignment handed over to ST Courier for Express Delivery";
+
+    const whatsappMsg = `*MADURAI GADGETS 58 - SHIPMENT DISPATCHED* 🚚📦\n--------------------------------------\nVanakkam Machan! Your premium watch package is in transit! 🌟✨\n\n🆔 *Invoice ID:* ${ord.id}\n📍 *Destination:* ${ord.shipping.city}\n🚚 *Shipping Partner:* ST Courier\n🎫 *Consignment Details:* ${courierText}\n\nTrack your live delivery progression directly on our website using your order tracker. Wear Peak, Master Your Style! ☄️⌚`;
+    
+    window.open(`https://wa.me/${cleanPhone}?text=${encodeURIComponent(whatsappMsg)}`, "_blank", "noopener,noreferrer");
+  };
+
+  const sendWhatsAppDelivered = (ord: Order) => {
+    let cleanPhone = ord.shipping.phone?.replace(/\D/g, "") || "9585969334";
+    if (cleanPhone.length === 10) cleanPhone = "91" + cleanPhone;
+    else if (cleanPhone.startsWith("0") && cleanPhone.length === 11) cleanPhone = "91" + cleanPhone.substring(1);
+    else if (cleanPhone.length > 10) cleanPhone = "91" + cleanPhone.slice(-10);
+    else cleanPhone = "91" + cleanPhone;
+
+    const whatsappMsg = `*MADURAI GADGETS 58 - DELIVERED SUCCESSFULLY* 🎉⌚\n--------------------------------------\nVanakkam Machan! Your order *${ord.id}* has been successfully delivered! ✅\n\nHope you love your premium timepiece. Wear with pride and tag us! Thank you for placing your trust in Madurai Gadgets 58! ✦✨`;
+    
+    window.open(`https://wa.me/${cleanPhone}?text=${encodeURIComponent(whatsappMsg)}`, "_blank", "noopener,noreferrer");
+  };
+
   const saveOrders = (newOrders: Order[]) => {
     setOrders(newOrders);
     localStorage.setItem("aura_shop_orders", JSON.stringify(newOrders));
@@ -2448,6 +2493,40 @@ My order is registered in the tracker with reference *${orderId}*. Thank you! �
                           </div>
                         </div>
 
+                        {/* PDF Receipt Download Alert box */}
+                        {selectedOrder.paymentStatus === "Paid" ? (
+                          <div className="bg-green-50 border border-green-200 p-4 rounded-md flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 animate-fadeIn">
+                            <div>
+                              <p className="text-xs font-bold text-green-800 uppercase tracking-wider font-mono">Invoice Receipt Unlocked 📜</p>
+                              <p className="text-[11px] text-green-700 mt-0.5 font-medium">Your payment is verified. You can now download the premium gold-bordered receipt PDF.</p>
+                            </div>
+                            <button
+                              type="button"
+                              onClick={() => setPrintingOrder(selectedOrder)}
+                              className="px-4 py-2 bg-green-600 hover:bg-green-700 text-white rounded-sm text-xs font-mono font-bold shadow-xs flex items-center gap-1.5 cursor-pointer shrink-0 transition-colors"
+                            >
+                              <FileText className="w-4 h-4" />
+                              <span>Download Invoice PDF</span>
+                            </button>
+                          </div>
+                        ) : (
+                          <div className="bg-amber-50 border border-amber-200 p-4 rounded-md flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 animate-fadeIn">
+                            <div>
+                              <p className="text-xs font-bold text-amber-800 uppercase tracking-wider font-mono">Verification Pending ⏳</p>
+                              <p className="text-[11px] text-amber-700 mt-0.5 font-medium">Your order is logged. Once payment is verified by our admin, your premium PDF receipt will unlock here.</p>
+                            </div>
+                            <a
+                              href={`https://wa.me/919585969334?text=${encodeURIComponent(`Vanakkam Machan! I have placed order ${selectedOrder.id}. Please verify my payment reference/UTR so I can download my PDF receipt!`)}`}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="px-4 py-2 bg-yellow-400 hover:bg-yellow-500 text-gray-950 rounded-sm text-xs font-mono font-bold shadow-xs flex items-center gap-1.5 cursor-pointer shrink-0 transition-colors font-bold"
+                            >
+                              <MessageSquare className="w-4 h-4 text-gray-950" />
+                              <span>Message Admin</span>
+                            </a>
+                          </div>
+                        )}
+
                         {/* ST COURIER OFFICIAL SHIPPING TRACKING TICKET SLIP */}
                         {selectedOrder.stCourierId && (
                           <div className="border-2 border-dashed border-yellow-400 bg-gradient-to-br from-yellow-50/50 to-white p-5 rounded-md text-xs space-y-4">
@@ -4023,6 +4102,9 @@ My order is registered in the tracker with reference *${orderId}*. Thank you! �
                                     saveOrders(updated);
                                     if (selectedOrder?.id === ord.id) setSelectedOrder({ ...selectedOrder, paymentStatus: val });
                                     triggerToast(`Bill of ${ord.id} marked as ${val}!`, "success");
+                                    if (val === "Paid") {
+                                      sendWhatsAppReceipt(ord);
+                                    }
                                   }}
                                   className={`w-full text-[11px] border px-2 py-1.5 focus:outline-none font-mono font-black rounded-sm ${
                                     (ord.paymentStatus || "Unpaid") === "Paid"
@@ -4045,6 +4127,11 @@ My order is registered in the tracker with reference *${orderId}*. Thank you! �
                                     saveOrders(updated);
                                     if (selectedOrder?.id === ord.id) setSelectedOrder({ ...selectedOrder, status: val });
                                     triggerToast(`Status of ${ord.id} changed to ${val}!`, "success");
+                                    if (val === "Shipped") {
+                                      sendWhatsAppShipped(ord);
+                                    } else if (val === "Delivered") {
+                                      sendWhatsAppDelivered(ord);
+                                    }
                                   }}
                                   className="w-full bg-white text-[11px] border border-zinc-200 px-2 py-1.5 focus:border-yellow-500 focus:outline-none text-zinc-900 font-mono font-black rounded-sm"
                                 >
@@ -4177,6 +4264,9 @@ My order is registered in the tracker with reference *${orderId}*. Thank you! �
                                       saveOrders(updated);
                                       if (selectedOrder?.id === ord.id) setSelectedOrder({ ...selectedOrder, paymentStatus: val });
                                       triggerToast(`Bill of ${ord.id} marked as ${val}!`, "success");
+                                      if (val === "Paid") {
+                                        sendWhatsAppReceipt(ord);
+                                      }
                                     }}
                                     className={`text-[11px] border px-2 py-1 focus:outline-none font-mono font-black rounded-sm ${
                                       (ord.paymentStatus || "Unpaid") === "Paid"
@@ -4205,6 +4295,11 @@ My order is registered in the tracker with reference *${orderId}*. Thank you! �
                                       saveOrders(updated);
                                       if (selectedOrder?.id === ord.id) setSelectedOrder({ ...selectedOrder, status: val });
                                       triggerToast(`Status of ${ord.id} changed to ${val}!`, "success");
+                                      if (val === "Shipped") {
+                                        sendWhatsAppShipped(ord);
+                                      } else if (val === "Delivered") {
+                                        sendWhatsAppDelivered(ord);
+                                      }
                                     }}
                                     className="bg-white text-xs border border-zinc-200 px-2 py-1.5 focus:border-yellow-500 focus:outline-none text-zinc-900 font-mono font-black rounded-sm w-full"
                                   >
