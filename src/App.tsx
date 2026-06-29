@@ -1415,7 +1415,7 @@ My order is registered in the tracker with reference *${orderId}*. Thank you! ðŸ
             exit={{ opacity: 0, y: -30, scale: 0.95 }}
             transition={{ type: "spring", stiffness: 220, damping: 20 }}
             id="toast-notification"
-            className={`fixed top-6 left-1/2 -translate-x-1/2 z-50 flex items-center gap-2.5 px-5 py-3 rounded-sm shadow-2xl border text-sm max-w-sm bg-white text-zinc-900 border-zinc-200`}
+            className="fixed top-6 left-1/2 -translate-x-1/2 z-50 flex items-center gap-2.5 px-6 py-3.5 rounded-full shadow-[0_20px_50px_rgba(0,0,0,0.15)] border text-sm max-w-sm bg-white/85 backdrop-blur-md text-zinc-900 border-zinc-250/50"
           >
             {toast.type === "success" ? (
               <CheckCircle className="w-4 h-4 text-emerald-500 shrink-0" />
@@ -1532,63 +1532,136 @@ My order is registered in the tracker with reference *${orderId}*. Thank you! ðŸ
           <div className="space-y-12">
             
             {/* Minimalist Hero spotlight */}
-            <section className="bg-gradient-to-br from-white via-zinc-50 to-yellow-50/20 rounded-md p-4 xs:p-6 sm:p-12 lg:p-16 relative overflow-hidden border border-zinc-200 shadow-sm flex flex-col justify-between">
+            <section className="bg-gradient-to-br from-white via-zinc-50 to-yellow-50/20 rounded-md p-6 xs:p-8 sm:p-12 lg:p-16 relative overflow-hidden border border-zinc-200 shadow-sm flex flex-col justify-between">
               {/* Overlay abstract design elements */}
-              <div className="absolute right-0 top-0 w-1/2 h-full bg-[radial-gradient(rgba(0,0,0,0.01)_1px,transparent_1px)] [background-size:24px_24px] opacity-100"></div>
+              <div className="absolute right-0 top-0 w-1/2 h-full bg-[radial-gradient(rgba(0,0,0,0.01)_1px,transparent_1px)] [background-size:24px_24px] opacity-100 pointer-events-none"></div>
               
               {/* Custom Hero backdrop image if active */}
               {customHeroImage && heroLayout === "backdrop" && (
-                <div className="absolute inset-0 z-0 select-none">
+                <div className="absolute inset-0 z-0 select-none pointer-events-none">
                   <img src={customHeroImage} alt="Hero Backdrop" className="w-full h-full object-cover opacity-10 filter blur-[1px]" referrerPolicy="no-referrer" />
                   <div className="absolute inset-0 bg-gradient-to-r from-white via-white/85 to-transparent"></div>
                   <div className="absolute inset-0 bg-gradient-to-t from-white via-transparent to-transparent"></div>
                 </div>
               )}
  
-              <div className="max-w-3xl mx-auto text-center relative z-10 space-y-6 sm:space-y-8 flex flex-col items-center">
-                <div className="space-y-2.5 sm:space-y-4">
-                  <span className="text-[8px] sm:text-[10px] uppercase tracking-[0.15em] sm:tracking-[0.4em] text-yellow-600 block font-mono font-bold">âš¡ WELCOME TO THE FUTURE OF WATCH COLLECTION</span>
-                  <h1 className="select-none flex flex-col pt-1 font-syne uppercase">
-                    <span className="text-yellow-600 font-extrabold tracking-tight text-3xl xs:text-4xl sm:text-7xl lg:text-8xl leading-[1.1] mb-1 sm:mb-3 drop-shadow-sm">
-                      Madurai Gadgets
-                    </span>
-                    <span className="block text-zinc-900 font-bold tracking-[0.05em] text-lg xs:text-2xl sm:text-4xl lg:text-5xl leading-tight">
-                      Wear Peak
-                    </span>
-                    <span className="block text-zinc-500 font-light tracking-[0.1em] sm:tracking-[0.2em] text-[10px] sm:text-sm lg:text-base mt-1.5 sm:mt-2">
-                      Master Your Style
-                    </span>
-                  </h1>
-                </div>
+              <div className="w-full relative z-10 lg:grid lg:grid-cols-12 lg:gap-12 lg:items-center">
+                {/* Left Side: Staggered Text & Button Actions */}
+                <div className="lg:col-span-7 flex flex-col items-center lg:items-start text-center lg:text-left space-y-6 sm:space-y-8">
+                  <div className="space-y-3 sm:space-y-4">
+                    <motion.span 
+                      initial={{ opacity: 0, y: 10 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      transition={{ duration: 0.5, ease: "easeOut" }}
+                      className="text-[8px] sm:text-[10px] uppercase tracking-[0.15em] sm:tracking-[0.4em] text-yellow-600 block font-mono font-bold"
+                    >
+                      âš¡ WELCOME TO THE FUTURE OF WATCH COLLECTION
+                    </motion.span>
+                    <motion.h1 
+                      initial={{ opacity: 0, y: 15 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      transition={{ delay: 0.15, duration: 0.6, ease: "easeOut" }}
+                      className="select-none flex flex-col pt-1 font-syne uppercase"
+                    >
+                      <span className="text-yellow-600 font-extrabold tracking-tight text-3xl xs:text-4xl sm:text-7xl lg:text-8xl leading-[1.1] mb-1 sm:mb-3 drop-shadow-sm">
+                        Madurai Gadgets
+                      </span>
+                      <span className="block text-zinc-900 font-bold tracking-[0.05em] text-lg xs:text-2xl sm:text-4xl lg:text-5xl leading-tight">
+                        Wear Peak
+                      </span>
+                      <span className="block text-zinc-500 font-light tracking-[0.1em] sm:tracking-[0.2em] text-[10px] sm:text-sm lg:text-base mt-1.5 sm:mt-2">
+                        Master Your Style
+                      </span>
+                    </motion.h1>
+                  </div>
  
-                <p className="text-zinc-650 text-xs sm:text-sm leading-relaxed max-w-lg font-sans font-medium mx-auto">
-                  premium mastercopy watches with first class premium design at affordable price. Grab custom automatic, luxury chronograph, and sport diving watch copies.
-                </p>
+                  <motion.p 
+                    initial={{ opacity: 0, y: 15 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={{ delay: 0.3, duration: 0.6, ease: "easeOut" }}
+                    className="text-zinc-650 text-xs sm:text-sm leading-relaxed max-w-lg font-sans font-medium mx-auto lg:mx-0"
+                  >
+                    premium mastercopy watches with first class premium design at affordable price. Grab custom automatic, luxury chronograph, and sport diving watch copies.
+                  </motion.p>
  
-                <div className="flex flex-wrap justify-center items-center gap-3 sm:gap-4">
-                  <button
-                    onClick={() => {
-                      document.getElementById("catalog-section")?.scrollIntoView({ behavior: "smooth" });
-                    }}
-                    className="px-6 py-3 sm:px-10 sm:py-4 bg-yellow-400 hover:bg-yellow-500 text-gray-950 text-[10px] sm:text-[11px] uppercase tracking-[0.15em] sm:tracking-[0.2em] font-black transition-all shadow-md cursor-pointer"
+                  <motion.div 
+                    initial={{ opacity: 0, y: 15 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={{ delay: 0.45, duration: 0.6, ease: "easeOut" }}
+                    className="flex flex-wrap justify-center lg:justify-start items-center gap-3 sm:gap-4"
                   >
-                    Explore Collection
-                  </button>
-                  <button
-                    onClick={() => {
-                      setCouponCode("MACHAN");
-                      setDiscountPercent(15);
-                      setCouponFeedback({
-                        msg: "Promo code loaded! Open your cart drawer to see it.",
-                        success: true
-                      });
-                      triggerToast("Discount loaded: MACHAN (15% Off)", "success");
-                    }}
-                    className="px-5 py-3 sm:px-8 sm:py-4 bg-white text-zinc-700 hover:text-yellow-600 border border-zinc-250 hover:border-yellow-500 transition-all rounded-none text-[10px] sm:text-[11px] uppercase tracking-[0.15em] sm:tracking-[0.2em] font-black cursor-pointer shadow-sm hover:bg-zinc-50"
-                  >
-                    Load Coupon (15% Off)
-                  </button>
+                    <button
+                      onClick={() => {
+                        document.getElementById("catalog-section")?.scrollIntoView({ behavior: "smooth" });
+                      }}
+                      className="px-6 py-3 sm:px-10 sm:py-4 bg-yellow-400 hover:bg-yellow-500 text-gray-950 text-[10px] sm:text-[11px] uppercase tracking-[0.15em] sm:tracking-[0.2em] font-black transition-all shadow-md hover:shadow-yellow-500/10 cursor-pointer active:scale-95"
+                    >
+                      Explore Collection
+                    </button>
+                    <button
+                      onClick={() => {
+                        setCouponCode("MACHAN");
+                        setDiscountPercent(15);
+                        setCouponFeedback({
+                          msg: "Promo code loaded! Open your cart drawer to see it.",
+                          success: true
+                        });
+                        triggerToast("Discount loaded: MACHAN (15% Off)", "success");
+                      }}
+                      className="px-5 py-3 sm:px-8 sm:py-4 bg-white text-zinc-700 hover:text-yellow-600 border border-zinc-250 hover:border-yellow-500 transition-all rounded-none text-[10px] sm:text-[11px] uppercase tracking-[0.15em] sm:tracking-[0.2em] font-black cursor-pointer shadow-sm hover:bg-zinc-50 active:scale-95"
+                    >
+                      Load Coupon (15% Off)
+                    </button>
+                  </motion.div>
                 </div>
+
+                {/* Right Side: Interactive Showcase Floating Watch in Glassmorphic frame */}
+                <motion.div
+                  initial={{ opacity: 0, scale: 0.9, y: 20 }}
+                  animate={{ opacity: 1, scale: 1, y: 0 }}
+                  transition={{ delay: 0.35, duration: 0.8, ease: "easeOut" }}
+                  className="hidden lg:col-span-5 lg:flex flex-col items-center justify-center relative select-none"
+                >
+                  {/* Glowing backplate radial aura */}
+                  <div className="absolute w-80 h-80 rounded-full bg-yellow-400/10 blur-3xl pointer-events-none animate-pulse"></div>
+                  
+                  {/* Glassmorphic card frame with slow floating animation */}
+                  <motion.div
+                    animate={{ y: [0, -12, 0] }}
+                    transition={{ duration: 5, ease: "easeInOut", repeat: Infinity }}
+                    className="w-[320px] h-[400px] bg-white/40 backdrop-blur-xl border border-zinc-200 rounded-2xl p-6 shadow-xl flex flex-col justify-between relative overflow-hidden"
+                  >
+                    {/* Glass glare line sheen */}
+                    <div className="absolute inset-0 bg-gradient-to-tr from-white/0 via-white/10 to-white/0 pointer-events-none transform -skew-x-12 animate-[shimmer_8s_infinite]"></div>
+                    
+                    {/* Top row */}
+                    <div className="flex justify-between items-center relative z-10">
+                      <span className="text-[9px] font-mono font-bold tracking-widest text-yellow-600 bg-yellow-400/20 border border-yellow-400/30 px-2 py-0.5 rounded-sm uppercase">PREMIER COPIES</span>
+                      <span className="text-[10px] font-mono text-zinc-500 font-bold">1:1 Replica</span>
+                    </div>
+
+                    {/* Main Watch vector artwork showcase */}
+                    <div className="h-44 flex items-center justify-center relative z-10">
+                      {/* Rotating compass/bezel rings */}
+                      <div className="absolute w-36 h-36 rounded-full border border-dashed border-zinc-300/40 animate-[spin_100s_linear_infinite]"></div>
+                      <div className="absolute w-28 h-28 rounded-full border border-dotted border-yellow-500/20 animate-[spin_60s_linear_infinite_reverse]"></div>
+                      
+                      <div className="scale-[1.25] transition-transform duration-500 hover:scale-[1.32]">
+                        {renderProductIllustration("royaloak", "h-40")}
+                      </div>
+                    </div>
+
+                    {/* Bottom Card details */}
+                    <div className="space-y-1 mt-2 relative z-10">
+                      <p className="text-[9px] font-mono uppercase tracking-[0.2em] text-yellow-600 font-bold">AUDEMARS PIGUET</p>
+                      <p className="text-zinc-950 font-display font-black text-lg">Royal Oak Skeleton Copy</p>
+                      <div className="flex justify-between items-center pt-2.5 border-t border-zinc-150">
+                        <span className="font-mono text-zinc-950 font-black text-sm">â‚¹6,499.00</span>
+                        <span className="text-[8px] text-zinc-400 font-black uppercase tracking-wider font-mono bg-zinc-100 px-1.5 py-0.5 rounded-xs">Automatic Sweep</span>
+                      </div>
+                    </div>
+                  </motion.div>
+                </motion.div>
               </div>
 
               {/* Bottom micro trust metrics */}
@@ -2088,16 +2161,16 @@ My order is registered in the tracker with reference *${orderId}*. Thank you! ðŸ
                         key={product.id}
                         initial={{ opacity: 0, y: 15 }}
                         animate={{ opacity: 1, y: 0 }}
-                        whileHover={{ y: -12, scale: 1.03 }}
-                        transition={{ type: "spring", stiffness: 260, damping: 18 }}
-                        className="bg-white rounded-md border border-zinc-200 shadow-sm flex flex-col justify-between group hover:shadow-xl hover:border-yellow-500 transition-all duration-350 relative overflow-hidden"
+                        whileHover={{ y: -6, scale: 1.02 }}
+                        transition={{ duration: 0.3, ease: "easeOut" }}
+                        className="bg-white rounded-md border border-zinc-200 shadow-sm flex flex-col justify-between group hover:shadow-xl hover:border-yellow-500 transition-all duration-300 relative overflow-hidden"
                       >
                         
                         {/* Artwork/Illustration container section with solid gray backplate */}
                         <div className="p-2 sm:p-3 bg-zinc-50 relative border-b border-zinc-200 flex flex-col items-center justify-center">
                           <button
                             onClick={() => setDetailedProduct(product)}
-                            className="w-full block hover:scale-103 transition-transform duration-300 cursor-pointer text-center"
+                            className="w-full block group-hover:rotate-2 group-hover:scale-[1.03] transition-transform duration-500 ease-out cursor-pointer text-center"
                           >
                             {renderProductIllustration(cardActiveImages[product.id] || product.image, "h-32 sm:h-56")}
                           </button>
