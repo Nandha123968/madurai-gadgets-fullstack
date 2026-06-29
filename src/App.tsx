@@ -30,7 +30,8 @@ import {
   FileText,
   Lock,
   Check,
-  Clock
+  Clock,
+  Instagram
 } from "lucide-react";
 import { motion, AnimatePresence } from "motion/react";
 import { Product, CartItem, Message, Order } from "./types";
@@ -4540,6 +4541,9 @@ My order is registered in the tracker with reference *${orderId}*. Thank you! ðŸ
             </a>
             <a href="https://www.google.com/maps/place/Madurai+gadgets/@9.9922292,78.143742,17z/data=!3m1!4b1!4m6!3m5!1s0x3b00c700009d03d3:0xfef509e87545f20!8m2!3d9.9922239!4d78.1463169!16s%2Fg%2F11lcv4slbg?entry=ttu&g_ep=EgoyMDI2MDYxNi4wIKXMDSoASAFQAw%3D%3D" target="_blank" rel="noopener noreferrer" className="hover:text-zinc-900 transition-all flex items-center gap-1.5 text-amber-600 font-bold">
               <MapPin className="w-3.5 h-3.5" /> Google Location
+            </a>
+            <a href="https://www.instagram.com/madurai_gadgets_58?igsh=MjgybWtsNWVzaGhi" target="_blank" rel="noopener noreferrer" className="hover:text-zinc-900 transition-all flex items-center gap-1.5 text-rose-600 font-bold">
+              <Instagram className="w-3.5 h-3.5" /> Instagram
             </a>
             <button onClick={() => { setActiveTab("shop"); window.scrollTo({ top: 0, behavior: "smooth" }); }} className="hover:text-zinc-900 transition-colors cursor-pointer">Watch Catalog</button>
             <button onClick={() => { setActiveTab("tracker"); window.scrollTo({ top: 0, behavior: "smooth" }); }} className="hover:text-zinc-900 transition-colors cursor-pointer">Order Status</button>
