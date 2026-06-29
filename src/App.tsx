@@ -1552,17 +1552,28 @@ My order is registered in the tracker with reference *${orderId}*. Thank you! ðŸ
         {activeTab === "shop" && (
           <div className="space-y-12">
             
-            {/* Minimalist Hero spotlight */}
-            <section className="bg-gradient-to-br from-white via-zinc-50 to-yellow-50/20 rounded-md p-6 xs:p-8 sm:p-12 lg:p-16 relative overflow-hidden border border-zinc-200 shadow-sm flex flex-col justify-between">
-              {/* Overlay abstract design elements */}
-              <div className="absolute right-0 top-0 w-1/2 h-full bg-[radial-gradient(rgba(0,0,0,0.01)_1px,transparent_1px)] [background-size:24px_24px] opacity-100 pointer-events-none"></div>
+            {/* Minimalist Hero spotlight with Loop Video Background */}
+            <section className="bg-zinc-950 rounded-md p-6 xs:p-8 sm:p-12 lg:p-16 relative overflow-hidden border border-zinc-900 shadow-xl flex flex-col justify-between min-h-[500px]">
+              
+              {/* Loop Video Background */}
+              <div className="absolute inset-0 z-0 select-none pointer-events-none">
+                <video
+                  autoPlay
+                  loop
+                  muted
+                  playsInline
+                  className="w-full h-full object-cover opacity-30"
+                >
+                  <source src="https://res.cloudinary.com/drtndbcbu/video/upload/v1782768841/agent_generate_video_-_Ultra-realistic_3D_cinematic_product_shot__Individual_luxury_ibtxnk.mp4" type="video/mp4" />
+                </video>
+                {/* Overlay gradient shroud for text readability */}
+                <div className="absolute inset-0 bg-gradient-to-br from-zinc-950/90 via-zinc-950/70 to-zinc-950/90"></div>
+              </div>
               
               {/* Custom Hero backdrop image if active */}
               {customHeroImage && heroLayout === "backdrop" && (
-                <div className="absolute inset-0 z-0 select-none pointer-events-none">
-                  <img src={customHeroImage} alt="Hero Backdrop" className="w-full h-full object-cover opacity-10 filter blur-[1px]" referrerPolicy="no-referrer" decoding="async" loading="lazy" />
-                  <div className="absolute inset-0 bg-gradient-to-r from-white via-white/85 to-transparent"></div>
-                  <div className="absolute inset-0 bg-gradient-to-t from-white via-transparent to-transparent"></div>
+                <div className="absolute inset-0 z-0 select-none pointer-events-none opacity-10">
+                  <img src={customHeroImage} alt="Hero Backdrop" className="w-full h-full object-cover filter blur-[1px]" referrerPolicy="no-referrer" decoding="async" loading="lazy" />
                 </div>
               )}
  
@@ -1577,7 +1588,7 @@ My order is registered in the tracker with reference *${orderId}*. Thank you! ðŸ
                     initial={{ opacity: 0, y: 8 }}
                     animate={{ opacity: 1, y: 0 }}
                     transition={{ delay: 0.15, duration: 0.5 }}
-                    className="text-[8px] sm:text-[10px] uppercase tracking-[0.15em] sm:tracking-[0.4em] text-yellow-600 block font-mono font-bold"
+                    className="text-[8px] sm:text-[10px] uppercase tracking-[0.15em] sm:tracking-[0.4em] text-yellow-400 block font-mono font-bold"
                   >
                     âš¡ WELCOME TO THE FUTURE OF WATCH COLLECTION
                   </motion.span>
@@ -1587,13 +1598,13 @@ My order is registered in the tracker with reference *${orderId}*. Thank you! ðŸ
                     transition={{ delay: 0.3, duration: 0.6 }}
                     className="select-none flex flex-col pt-1 font-syne uppercase"
                   >
-                    <span className="text-yellow-600 font-extrabold tracking-tight text-3xl xs:text-4xl sm:text-7xl lg:text-8xl leading-[1.1] mb-1 sm:mb-3 drop-shadow-sm">
+                    <span className="text-yellow-500 font-extrabold tracking-tight text-3xl xs:text-4xl sm:text-7xl lg:text-8xl leading-[1.1] mb-1 sm:mb-3 drop-shadow-sm">
                       Madurai Gadgets
                     </span>
-                    <span className="block text-zinc-900 font-bold tracking-[0.05em] text-lg xs:text-2xl sm:text-4xl lg:text-5xl leading-tight">
+                    <span className="block text-white font-bold tracking-[0.05em] text-lg xs:text-2xl sm:text-4xl lg:text-5xl leading-tight">
                       Wear Peak
                     </span>
-                    <span className="block text-zinc-500 font-light tracking-[0.1em] sm:tracking-[0.2em] text-[10px] sm:text-sm lg:text-base mt-1.5 sm:mt-2">
+                    <span className="block text-zinc-400 font-light tracking-[0.1em] sm:tracking-[0.2em] text-[10px] sm:text-sm lg:text-base mt-1.5 sm:mt-2">
                       Master Your Style
                     </span>
                   </motion.h1>
@@ -1603,7 +1614,7 @@ My order is registered in the tracker with reference *${orderId}*. Thank you! ðŸ
                   initial={{ opacity: 0, y: 12 }}
                   animate={{ opacity: 1, y: 0 }}
                   transition={{ delay: 0.45, duration: 0.6 }}
-                  className="text-zinc-650 text-xs sm:text-sm leading-relaxed max-w-lg font-sans font-medium mx-auto"
+                  className="text-zinc-300 text-xs sm:text-sm leading-relaxed max-w-lg font-sans font-medium mx-auto"
                 >
                   premium mastercopy watches with first class premium design at affordable price. Grab custom automatic, luxury chronograph, and sport diving watch copies.
                 </motion.p>
@@ -1632,7 +1643,7 @@ My order is registered in the tracker with reference *${orderId}*. Thank you! ðŸ
                       });
                       triggerToast("Discount loaded: MACHAN (15% Off)", "success");
                     }}
-                    className="px-5 py-3 sm:px-8 sm:py-4 bg-white text-zinc-700 hover:text-yellow-600 border border-zinc-250 hover:border-yellow-500 transition-all rounded-none text-[10px] sm:text-[11px] uppercase tracking-[0.15em] sm:tracking-[0.2em] font-black cursor-pointer shadow-sm hover:bg-zinc-50 hover:scale-102 active:scale-95"
+                    className="px-5 py-3 sm:px-8 sm:py-4 bg-zinc-900 text-zinc-200 hover:text-yellow-400 border border-zinc-800 hover:border-yellow-500 transition-all rounded-none text-[10px] sm:text-[11px] uppercase tracking-[0.15em] sm:tracking-[0.2em] font-black cursor-pointer shadow-sm hover:bg-zinc-850 hover:scale-102 active:scale-95"
                   >
                     Load Coupon (15% Off)
                   </button>
@@ -1640,32 +1651,32 @@ My order is registered in the tracker with reference *${orderId}*. Thank you! ðŸ
               </motion.div>
 
               {/* Bottom micro trust metrics */}
-              <div className="grid grid-cols-2 md:grid-cols-4 gap-6 pt-12 border-t border-zinc-150 mt-16 text-xs text-zinc-500 relative z-10">
+              <div className="grid grid-cols-2 md:grid-cols-4 gap-6 pt-12 border-t border-zinc-900/80 mt-16 text-xs text-zinc-400 relative z-10">
                 <div className="flex items-center gap-2">
                   <Award className="w-4 h-4 text-yellow-500 shrink-0" />
                   <div>
-                    <p className="font-bold text-zinc-800 uppercase tracking-wider text-[10px]">A+ Mastercopy</p>
+                    <p className="font-bold text-zinc-200 uppercase tracking-wider text-[10px]">A+ Mastercopy</p>
                     <p className="text-[10px] text-zinc-500">First-Class Premium Quality</p>
                   </div>
                 </div>
                 <div className="flex items-center gap-2">
                   <Truck className="w-4 h-4 text-yellow-500 shrink-0" />
                   <div>
-                    <p className="font-bold text-zinc-800 uppercase tracking-wider text-[10px]">Madurai Delivery</p>
+                    <p className="font-bold text-zinc-200 uppercase tracking-wider text-[10px]">Madurai Delivery</p>
                     <p className="text-[10px] text-zinc-500">Complimentary shipping pan India</p>
                   </div>
                 </div>
                 <div className="flex items-center gap-2">
                   <ShieldCheck className="w-4 h-4 text-yellow-500 shrink-0" />
                   <div>
-                    <p className="font-bold text-zinc-800 uppercase tracking-wider text-[10px]">3-6 Months Warranty</p>
+                    <p className="font-bold text-zinc-200 uppercase tracking-wider text-[10px]">3-6 Months Warranty</p>
                     <p className="text-[10px] text-zinc-500">Covers machine sweep & battery</p>
                   </div>
                 </div>
                 <div className="flex items-center gap-2">
                   <RotateCcw className="w-4 h-4 text-yellow-500 shrink-0" />
                   <div>
-                    <p className="font-bold text-zinc-800 uppercase tracking-wider text-[10px]">Secure Checks</p>
+                    <p className="font-bold text-zinc-200 uppercase tracking-wider text-[10px]">Secure Checks</p>
                     <p className="text-[10px] text-zinc-500">WhatsApp confirmation support</p>
                   </div>
                 </div>
