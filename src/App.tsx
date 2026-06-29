@@ -983,13 +983,22 @@ My order is registered in the tracker with reference *${orderId}*. Thank you! ðŸ
     setChatInput(promptText);
   };
 
+  // Dynamic media optimizer helper for whitelisted Cloudinary asset structures
+  const optimizeImageUrl = (url: string, width: number = 600): string => {
+    if (url && url.includes("res.cloudinary.com") && url.includes("/image/upload/")) {
+      return url.replace("/image/upload/", `/image/upload/f_auto,q_auto,w_${width}/`);
+    }
+    return url;
+  };
+
   // Visual Product Vector Mock Art Renderer (To keep look premium & avoid external generic image links)
-  const renderProductIllustration = (imageKey: string, sizeClass: string = "h-40") => {
+  const renderProductIllustration = (imageKey: string, sizeClass: string = "h-40", imgWidth: number = 600) => {
     if (imageKey && (imageKey.startsWith("data:") || imageKey.startsWith("http://") || imageKey.startsWith("https://"))) {
+      const optimizedUrl = optimizeImageUrl(imageKey, imgWidth);
       return (
         <div className={`w-full ${sizeClass} bg-transparent rounded-none relative flex items-center justify-center overflow-hidden`}>
           <motion.img
-            src={imageKey}
+            src={optimizedUrl}
             alt="Product Media"
             className="w-[96%] h-[96%] object-contain select-none"
             referrerPolicy="no-referrer"
@@ -3721,7 +3730,7 @@ My order is registered in the tracker with reference *${orderId}*. Thank you! ðŸ
                           <div key={prod.id} className="bg-white border border-zinc-200 p-4 rounded shadow-sm space-y-4">
                             <div className="flex items-center gap-3">
                               <div className="w-12 h-12 bg-zinc-50 border border-zinc-200 p-1 flex items-center justify-center rounded overflow-hidden shrink-0">
-                                {renderProductIllustration(prod.image, "h-10")}
+                                {renderProductIllustration(prod.image, "h-10", 150)}
                               </div>
                               <div className="min-w-0 flex-1">
                                 <h4 className="font-bold text-zinc-950 truncate text-xs">{prod.name}</h4>
@@ -3837,7 +3846,7 @@ My order is registered in the tracker with reference *${orderId}*. Thank you! ðŸ
                                   <td className="p-3 text-[10px] font-mono text-gray-500 font-bold">{prod.id}</td>
                                   <td className="p-2 text-center">
                                     <div className="w-10 h-10 bg-gray-50 border border-gray-200 flex items-center justify-center rounded-sm overflow-hidden p-0.5 mx-auto">
-                                      {renderProductIllustration(prod.image, "h-8")}
+                                      {renderProductIllustration(prod.image, "h-8", 150)}
                                     </div>
                                   </td>
                                   <td className="p-2 font-bold text-gray-900 max-w-xs truncate" title={prod.name}>
@@ -4597,7 +4606,7 @@ My order is registered in the tracker with reference *${orderId}*. Thank you! ðŸ
 
               {/* Left Column Art depiction */}
               <div className="md:w-1/2 space-y-4">
-                {renderProductIllustration(activeDetailImage || detailedProduct.image, "h-56 sm:h-64")}
+                {renderProductIllustration(activeDetailImage || detailedProduct.image, "h-56 sm:h-64", 900)}
                 
                 {/* Dynamic Color Variations circles */}
                 {detailedProduct.variations && detailedProduct.variations.length > 0 && (
@@ -4764,7 +4773,7 @@ My order is registered in the tracker with reference *${orderId}*. Thank you! ðŸ
                       {cart.map((item) => (
                         <div key={item.product.id} className="pt-4 first:pt-0 flex items-start gap-4">
                           <div className="w-16 shrink-0">
-                            {renderProductIllustration(item.product.image, "h-16")}
+                            {renderProductIllustration(item.product.image, "h-16", 150)}
                           </div>
 
                           <div className="flex-1 space-y-1">
