@@ -1566,6 +1566,8 @@ My order is registered in the tracker with reference *${orderId}*. Thank you! ðŸ
                 >
                   <source src="https://res.cloudinary.com/drtndbcbu/video/upload/v1782768841/agent_generate_video_-_Ultra-realistic_3D_cinematic_product_shot__Individual_luxury_ibtxnk.mp4" type="video/mp4" />
                 </video>
+                {/* Navy Blue Blend Overlay to colorize the watch components */}
+                <div className="absolute inset-0 bg-[#0d2240] mix-blend-screen pointer-events-none"></div>
                 {/* Overlay gradient shroud for crisp text readability */}
                 <div className="absolute inset-0 bg-gradient-to-br from-white/95 via-white/80 to-white/95"></div>
               </div>
