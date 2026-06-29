@@ -1555,21 +1555,19 @@ My order is registered in the tracker with reference *${orderId}*. Thank you! ðŸ
             {/* Minimalist Hero spotlight with Loop Video Background */}
             <section className="bg-gradient-to-br from-white via-zinc-50 to-white rounded-md p-6 xs:p-8 sm:p-12 lg:p-16 relative overflow-hidden border border-zinc-200 shadow-sm flex flex-col justify-between min-h-[500px]">
               
-              {/* Loop Video Background (Inverted to blend with light theme) */}
+              {/* Loop Video Background (Native white background watch components) */}
               <div className="absolute inset-0 z-0 select-none pointer-events-none">
                 <video
                   autoPlay
                   loop
                   muted
                   playsInline
-                  className="w-full h-full object-cover opacity-100 filter invert"
+                  className="w-full h-full object-cover opacity-100"
                 >
-                  <source src="https://res.cloudinary.com/drtndbcbu/video/upload/v1782768841/agent_generate_video_-_Ultra-realistic_3D_cinematic_product_shot__Individual_luxury_ibtxnk.mp4" type="video/mp4" />
+                  <source src="https://res.cloudinary.com/drtndbcbu/video/upload/v1782769948/agent_generate_video_-_Ultra-realistic_3D_cinematic_product_shot_animated_from_this_jsjn2c.mp4" type="video/mp4" />
                 </video>
-                {/* Gold Blend Overlay to colorize the watch components */}
-                <div className="absolute inset-0 bg-[#d4af37] mix-blend-screen pointer-events-none"></div>
                 {/* Overlay gradient shroud for crisp text readability */}
-                <div className="absolute inset-0 bg-gradient-to-br from-white/70 via-white/30 to-white/70"></div>
+                <div className="absolute inset-0 bg-gradient-to-br from-white/70 via-white/35 to-white/70"></div>
               </div>
               
               {/* Custom Hero backdrop image if active */}
