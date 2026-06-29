@@ -40,11 +40,13 @@ app.use(compression());
 const allowedOrigins = [
   "http://localhost:3000",
   "http://localhost:5173",
-  "https://madurai-gadgets-fullstack.vercel.app"
+  "https://madurai-gadgets-fullstack.vercel.app",
+  "https://www.maduraigadgets58.in",
+  "https://maduraigadgets58.in"
 ];
 app.use(cors({
   origin: (origin, callback) => {
-    if (!origin || allowedOrigins.includes(origin) || origin.endsWith(".vercel.app") || process.env.NODE_ENV !== "production") {
+    if (!origin || allowedOrigins.includes(origin) || origin.endsWith(".vercel.app") || origin.endsWith(".maduraigadgets58.in") || process.env.NODE_ENV !== "production") {
       callback(null, true);
     } else {
       callback(new Error("CORS policy validation failed: origin not allowed! ❌"));
