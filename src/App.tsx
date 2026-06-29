@@ -1545,124 +1545,78 @@ My order is registered in the tracker with reference *${orderId}*. Thank you! �
                 </div>
               )}
  
-              <div className="w-full relative z-10 lg:grid lg:grid-cols-12 lg:gap-12 lg:items-center">
-                {/* Left Side: Staggered Text & Button Actions */}
-                <div className="lg:col-span-7 flex flex-col items-center lg:items-start text-center lg:text-left space-y-6 sm:space-y-8">
-                  <div className="space-y-3 sm:space-y-4">
-                    <motion.span 
-                      initial={{ opacity: 0, y: 10 }}
-                      animate={{ opacity: 1, y: 0 }}
-                      transition={{ duration: 0.5, ease: "easeOut" }}
-                      className="text-[8px] sm:text-[10px] uppercase tracking-[0.15em] sm:tracking-[0.4em] text-yellow-600 block font-mono font-bold"
-                    >
-                      ⚡ WELCOME TO THE FUTURE OF WATCH COLLECTION
-                    </motion.span>
-                    <motion.h1 
-                      initial={{ opacity: 0, y: 15 }}
-                      animate={{ opacity: 1, y: 0 }}
-                      transition={{ delay: 0.15, duration: 0.6, ease: "easeOut" }}
-                      className="select-none flex flex-col pt-1 font-syne uppercase"
-                    >
-                      <span className="text-yellow-600 font-extrabold tracking-tight text-3xl xs:text-4xl sm:text-7xl lg:text-8xl leading-[1.1] mb-1 sm:mb-3 drop-shadow-sm">
-                        Madurai Gadgets
-                      </span>
-                      <span className="block text-zinc-900 font-bold tracking-[0.05em] text-lg xs:text-2xl sm:text-4xl lg:text-5xl leading-tight">
-                        Wear Peak
-                      </span>
-                      <span className="block text-zinc-500 font-light tracking-[0.1em] sm:tracking-[0.2em] text-[10px] sm:text-sm lg:text-base mt-1.5 sm:mt-2">
-                        Master Your Style
-                      </span>
-                    </motion.h1>
-                  </div>
- 
-                  <motion.p 
-                    initial={{ opacity: 0, y: 15 }}
+              <motion.div 
+                initial={{ opacity: 0, y: 15 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ duration: 0.6, ease: "easeOut" }}
+                className="max-w-3xl mx-auto text-center relative z-10 space-y-6 sm:space-y-8 flex flex-col items-center w-full"
+              >
+                <div className="space-y-2.5 sm:space-y-4">
+                  <motion.span 
+                    initial={{ opacity: 0, y: 8 }}
                     animate={{ opacity: 1, y: 0 }}
-                    transition={{ delay: 0.3, duration: 0.6, ease: "easeOut" }}
-                    className="text-zinc-650 text-xs sm:text-sm leading-relaxed max-w-lg font-sans font-medium mx-auto lg:mx-0"
+                    transition={{ delay: 0.15, duration: 0.5 }}
+                    className="text-[8px] sm:text-[10px] uppercase tracking-[0.15em] sm:tracking-[0.4em] text-yellow-600 block font-mono font-bold"
                   >
-                    premium mastercopy watches with first class premium design at affordable price. Grab custom automatic, luxury chronograph, and sport diving watch copies.
-                  </motion.p>
- 
-                  <motion.div 
-                    initial={{ opacity: 0, y: 15 }}
+                    ⚡ WELCOME TO THE FUTURE OF WATCH COLLECTION
+                  </motion.span>
+                  <motion.h1 
+                    initial={{ opacity: 0, y: 12 }}
                     animate={{ opacity: 1, y: 0 }}
-                    transition={{ delay: 0.45, duration: 0.6, ease: "easeOut" }}
-                    className="flex flex-wrap justify-center lg:justify-start items-center gap-3 sm:gap-4"
+                    transition={{ delay: 0.3, duration: 0.6 }}
+                    className="select-none flex flex-col pt-1 font-syne uppercase"
                   >
-                    <button
-                      onClick={() => {
-                        document.getElementById("catalog-section")?.scrollIntoView({ behavior: "smooth" });
-                      }}
-                      className="px-6 py-3 sm:px-10 sm:py-4 bg-yellow-400 hover:bg-yellow-500 text-gray-950 text-[10px] sm:text-[11px] uppercase tracking-[0.15em] sm:tracking-[0.2em] font-black transition-all shadow-md hover:shadow-yellow-500/10 cursor-pointer active:scale-95"
-                    >
-                      Explore Collection
-                    </button>
-                    <button
-                      onClick={() => {
-                        setCouponCode("MACHAN");
-                        setDiscountPercent(15);
-                        setCouponFeedback({
-                          msg: "Promo code loaded! Open your cart drawer to see it.",
-                          success: true
-                        });
-                        triggerToast("Discount loaded: MACHAN (15% Off)", "success");
-                      }}
-                      className="px-5 py-3 sm:px-8 sm:py-4 bg-white text-zinc-700 hover:text-yellow-600 border border-zinc-250 hover:border-yellow-500 transition-all rounded-none text-[10px] sm:text-[11px] uppercase tracking-[0.15em] sm:tracking-[0.2em] font-black cursor-pointer shadow-sm hover:bg-zinc-50 active:scale-95"
-                    >
-                      Load Coupon (15% Off)
-                    </button>
-                  </motion.div>
+                    <span className="text-yellow-600 font-extrabold tracking-tight text-3xl xs:text-4xl sm:text-7xl lg:text-8xl leading-[1.1] mb-1 sm:mb-3 drop-shadow-sm">
+                      Madurai Gadgets
+                    </span>
+                    <span className="block text-zinc-900 font-bold tracking-[0.05em] text-lg xs:text-2xl sm:text-4xl lg:text-5xl leading-tight">
+                      Wear Peak
+                    </span>
+                    <span className="block text-zinc-500 font-light tracking-[0.1em] sm:tracking-[0.2em] text-[10px] sm:text-sm lg:text-base mt-1.5 sm:mt-2">
+                      Master Your Style
+                    </span>
+                  </motion.h1>
                 </div>
-
-                {/* Right Side: Interactive Showcase Floating Watch in Glassmorphic frame */}
-                <motion.div
-                  initial={{ opacity: 0, scale: 0.9, y: 20 }}
-                  animate={{ opacity: 1, scale: 1, y: 0 }}
-                  transition={{ delay: 0.35, duration: 0.8, ease: "easeOut" }}
-                  className="hidden lg:col-span-5 lg:flex flex-col items-center justify-center relative select-none"
+ 
+                <motion.p 
+                  initial={{ opacity: 0, y: 12 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ delay: 0.45, duration: 0.6 }}
+                  className="text-zinc-650 text-xs sm:text-sm leading-relaxed max-w-lg font-sans font-medium mx-auto"
                 >
-                  {/* Glowing backplate radial aura */}
-                  <div className="absolute w-80 h-80 rounded-full bg-yellow-400/10 blur-3xl pointer-events-none animate-pulse"></div>
-                  
-                  {/* Glassmorphic card frame with slow floating animation */}
-                  <motion.div
-                    animate={{ y: [0, -12, 0] }}
-                    transition={{ duration: 5, ease: "easeInOut", repeat: Infinity }}
-                    className="w-[320px] h-[400px] bg-white/40 backdrop-blur-xl border border-zinc-200 rounded-2xl p-6 shadow-xl flex flex-col justify-between relative overflow-hidden"
+                  premium mastercopy watches with first class premium design at affordable price. Grab custom automatic, luxury chronograph, and sport diving watch copies.
+                </motion.p>
+ 
+                <motion.div 
+                  initial={{ opacity: 0, y: 12 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ delay: 0.6, duration: 0.6 }}
+                  className="flex flex-wrap justify-center items-center gap-3 sm:gap-4"
+                >
+                  <button
+                    onClick={() => {
+                      document.getElementById("catalog-section")?.scrollIntoView({ behavior: "smooth" });
+                    }}
+                    className="px-6 py-3 sm:px-10 sm:py-4 bg-yellow-400 hover:bg-yellow-500 text-gray-950 text-[10px] sm:text-[11px] uppercase tracking-[0.15em] sm:tracking-[0.2em] font-black transition-all shadow-md cursor-pointer hover:scale-102 active:scale-95"
                   >
-                    {/* Glass glare line sheen */}
-                    <div className="absolute inset-0 bg-gradient-to-tr from-white/0 via-white/10 to-white/0 pointer-events-none transform -skew-x-12 animate-[shimmer_8s_infinite]"></div>
-                    
-                    {/* Top row */}
-                    <div className="flex justify-between items-center relative z-10">
-                      <span className="text-[9px] font-mono font-bold tracking-widest text-yellow-600 bg-yellow-400/20 border border-yellow-400/30 px-2 py-0.5 rounded-sm uppercase">PREMIER COPIES</span>
-                      <span className="text-[10px] font-mono text-zinc-500 font-bold">1:1 Replica</span>
-                    </div>
-
-                    {/* Main Watch vector artwork showcase */}
-                    <div className="h-44 flex items-center justify-center relative z-10">
-                      {/* Rotating compass/bezel rings */}
-                      <div className="absolute w-36 h-36 rounded-full border border-dashed border-zinc-300/40 animate-[spin_100s_linear_infinite]"></div>
-                      <div className="absolute w-28 h-28 rounded-full border border-dotted border-yellow-500/20 animate-[spin_60s_linear_infinite_reverse]"></div>
-                      
-                      <div className="scale-[1.25] transition-transform duration-500 hover:scale-[1.32]">
-                        {renderProductIllustration("royaloak", "h-40")}
-                      </div>
-                    </div>
-
-                    {/* Bottom Card details */}
-                    <div className="space-y-1 mt-2 relative z-10">
-                      <p className="text-[9px] font-mono uppercase tracking-[0.2em] text-yellow-600 font-bold">AUDEMARS PIGUET</p>
-                      <p className="text-zinc-950 font-display font-black text-lg">Royal Oak Skeleton Copy</p>
-                      <div className="flex justify-between items-center pt-2.5 border-t border-zinc-150">
-                        <span className="font-mono text-zinc-950 font-black text-sm">₹6,499.00</span>
-                        <span className="text-[8px] text-zinc-400 font-black uppercase tracking-wider font-mono bg-zinc-100 px-1.5 py-0.5 rounded-xs">Automatic Sweep</span>
-                      </div>
-                    </div>
-                  </motion.div>
+                    Explore Collection
+                  </button>
+                  <button
+                    onClick={() => {
+                      setCouponCode("MACHAN");
+                      setDiscountPercent(15);
+                      setCouponFeedback({
+                        msg: "Promo code loaded! Open your cart drawer to see it.",
+                        success: true
+                      });
+                      triggerToast("Discount loaded: MACHAN (15% Off)", "success");
+                    }}
+                    className="px-5 py-3 sm:px-8 sm:py-4 bg-white text-zinc-700 hover:text-yellow-600 border border-zinc-250 hover:border-yellow-500 transition-all rounded-none text-[10px] sm:text-[11px] uppercase tracking-[0.15em] sm:tracking-[0.2em] font-black cursor-pointer shadow-sm hover:bg-zinc-50 hover:scale-102 active:scale-95"
+                  >
+                    Load Coupon (15% Off)
+                  </button>
                 </motion.div>
-              </div>
+              </motion.div>
 
               {/* Bottom micro trust metrics */}
               <div className="grid grid-cols-2 md:grid-cols-4 gap-6 pt-12 border-t border-zinc-150 mt-16 text-xs text-zinc-500 relative z-10">
