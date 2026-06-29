@@ -1001,6 +1001,7 @@ My order is registered in the tracker with reference *${orderId}*. Thank you! ðŸ
               WebkitFontSmoothing: "antialiased",
             }}
             decoding="async"
+            loading="lazy"
           />
         </div>
       );
@@ -1366,6 +1367,7 @@ My order is registered in the tracker with reference *${orderId}*. Thank you! ðŸ
                       alt="Madurai Gadgets 58 Logo" 
                       className="w-full h-full object-cover"
                       referrerPolicy="no-referrer"
+                      decoding="async"
                     />
                   </div>
                 </div>
@@ -1539,7 +1541,7 @@ My order is registered in the tracker with reference *${orderId}*. Thank you! ðŸ
               {/* Custom Hero backdrop image if active */}
               {customHeroImage && heroLayout === "backdrop" && (
                 <div className="absolute inset-0 z-0 select-none pointer-events-none">
-                  <img src={customHeroImage} alt="Hero Backdrop" className="w-full h-full object-cover opacity-10 filter blur-[1px]" referrerPolicy="no-referrer" />
+                  <img src={customHeroImage} alt="Hero Backdrop" className="w-full h-full object-cover opacity-10 filter blur-[1px]" referrerPolicy="no-referrer" decoding="async" loading="lazy" />
                   <div className="absolute inset-0 bg-gradient-to-r from-white via-white/85 to-transparent"></div>
                   <div className="absolute inset-0 bg-gradient-to-t from-white via-transparent to-transparent"></div>
                 </div>
@@ -1691,6 +1693,8 @@ My order is registered in the tracker with reference *${orderId}*. Thank you! ðŸ
                           alt={item.label}
                           className="w-full h-full object-cover transition-transform duration-300 group-hover:scale-110"
                           referrerPolicy="no-referrer"
+                          decoding="async"
+                          loading="lazy"
                         />
                         {isComingSoon && (
                           <div className="absolute inset-0 bg-black/50 flex items-center justify-center">
@@ -4968,6 +4972,8 @@ My order is registered in the tracker with reference *${orderId}*. Thank you! ðŸ
                                   )}`}
                                   alt="UPI Payment QR Code"
                                   className="w-44 h-44 object-contain mx-auto"
+                                  decoding="async"
+                                  loading="lazy"
                                 />
                               </a>
                               
