@@ -5,6 +5,7 @@ import mysql from "mysql2";
 import { GoogleGenAI } from "@google/genai";
 import { createServer as createViteServer } from "vite";
 import cors from "cors";
+import compression from "compression";
 import bcrypt from "bcryptjs";
 import jwt from "jsonwebtoken";
 import nodemailer from "nodemailer";
@@ -32,7 +33,25 @@ app.use(helmet({
   contentSecurityPolicy: false
 })); 
 
-app.use(cors());
+// Enable response compression (GZIP) for optimized payload delivery speeds
+app.use(compression());
+
+// Secure restricted CORS configuration
+const allowedOrigins = [
+  "http://localhost:3000",
+  "http://localhost:5173",
+  "https://madurai-gadgets-fullstack.vercel.app"
+];
+app.use(cors({
+  origin: (origin, callback) => {
+    if (!origin || allowedOrigins.includes(origin) || origin.endsWith(".vercel.app") || process.env.NODE_ENV !== "production") {
+      callback(null, true);
+    } else {
+      callback(new Error("CORS policy validation failed: origin not allowed! ❌"));
+    }
+  },
+  credentials: true
+}));
 
 // 2. Payload Limit: Hacker periya data anuppi server-ah crash pannaama irukka limit (10kb) set panrom.
 app.use(express.json({ limit: '10kb' })); 
@@ -109,6 +128,18 @@ if (db) {
             console.error("Table create aagala ❌:", err);
         } else {
             console.log("Products Table Ready aagiduchu! 📦");
+
+            // Database Indexes for optimized searching and range queries
+            db.query("CREATE INDEX idx_products_name ON products(name)", (errIdxName: any) => {
+                if (errIdxName && errIdxName.code !== "ER_DUP_KEYNAME") {
+                    console.warn("Index idx_products_name creation skipped:", errIdxName.message);
+                }
+            });
+            db.query("CREATE INDEX idx_products_price ON products(price)", (errIdxPrice: any) => {
+                if (errIdxPrice && errIdxPrice.code !== "ER_DUP_KEYNAME") {
+                    console.warn("Index idx_products_price creation skipped:", errIdxPrice.message);
+                }
+            });
 
             // Safely check and add columns
             const columnsToCheck = [
@@ -331,10 +362,35 @@ Personality & Directives:
 4. If they negotiate or ask for a discount, happily let them know they can use coupon "MACHAN" for a special 15% discount, or "WELCOME" for 10% discount during checkout.
 5. Keep markdown clean: Use bolding and simple bullet points. Avoid giant heading tags so it fits beautifully in the small chat sidebar. Never stray from our 6 watch options.`;
 
+// Memory cache setup for production scaling
+interface ProductsCache {
+  data: any;
+  timestamp: number;
+}
+let memoryCache: ProductsCache | null = null;
+const CACHE_TTL_MS = 60 * 1000; // Cache products for 60 seconds
+
 // API routes
 app.get("/api/products", (req, res) => {
+  const page = req.query.page ? Number(req.query.page) : null;
+  const limit = req.query.limit ? Number(req.query.limit) : null;
+  const isPaginated = page !== null && limit !== null;
+
+  // Serve from cache if unpaginated and cache is valid
+  if (!isPaginated && memoryCache && (Date.now() - memoryCache.timestamp < CACHE_TTL_MS)) {
+    return res.json(memoryCache.data);
+  }
+
   if (db) {
-    db.query("SELECT * FROM products ORDER BY id DESC", (err: any, productsList: any) => {
+    let sql = "SELECT id, name, price, description, image_url, category, stock, specs, gender, brand FROM products ORDER BY id DESC";
+    let params: any[] = [];
+    if (isPaginated) {
+      const offset = (page! - 1) * limit!;
+      sql += " LIMIT ? OFFSET ?";
+      params.push(limit, offset);
+    }
+
+    db.query(sql, params, (err: any, productsList: any) => {
       if (err) {
         console.error("Error fetching from MySQL:", err);
         // Fallback to defaults
@@ -387,6 +443,14 @@ app.get("/api/products", (req, res) => {
           ...p,
           variations: variationsMap[p.id] || []
         }));
+
+        // Cache the unpaginated full list to reduce database traffic
+        if (!isPaginated) {
+          memoryCache = {
+            data: productsWithVariations,
+            timestamp: Date.now()
+          };
+        }
         
         res.json(productsWithVariations);
       });
@@ -419,6 +483,14 @@ app.get("/api/products", (req, res) => {
 app.post("/api/products", (req, res) => {
   const { name, price, description, image_url, category, stock, specs, gender, brand, variations } = req.body;
 
+  // Invalidate cache immediately on catalog write
+  memoryCache = null;
+
+  // Strict Input Validation
+  if (!name || name.trim() === "" || !price || isNaN(Number(price)) || !image_url || image_url.trim() === "") {
+    return res.status(400).json({ error: "Invalid input values: Name, numeric price, and image URL are required! ❌" });
+  }
+
   if (!db) {
     return res.status(500).json({ error: "Database not connected" });
   }
@@ -433,7 +505,7 @@ app.post("/api/products", (req, res) => {
   }
 
   const sqlInsert = "INSERT INTO products (name, price, description, image_url, category, stock, specs, gender, brand) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)";
-  db.query(sqlInsert, [name, price, description, image_url, category || "Premier Watches", stock || 15, formattedSpecs, gender || "Unisex", brand || "Other"], (err: any, result: any) => {
+  db.query(sqlInsert, [name.trim(), Number(price), description || "", image_url.trim(), category || "Premier Watches", stock || 15, formattedSpecs, gender || "Unisex", brand || "Other"], (err: any, result: any) => {
     if (err) {
       console.error(err);
       return res.status(500).json({ error: "Product save aagala macha" });
@@ -466,6 +538,14 @@ app.put("/api/products/:id", (req, res) => {
   const productId = req.params.id;
   const { name, price, description, image_url, category, stock, specs, gender, brand } = req.body;
 
+  // Invalidate cache immediately on catalog update
+  memoryCache = null;
+
+  // Strict Input Validation
+  if (!name || name.trim() === "" || !price || isNaN(Number(price)) || !image_url || image_url.trim() === "") {
+    return res.status(400).json({ error: "Invalid input values: Name, numeric price, and image URL are required! ❌" });
+  }
+
   if (!db) {
     return res.status(500).json({ error: "Database not connected" });
   }
@@ -486,7 +566,7 @@ app.put("/api/products/:id", (req, res) => {
   `;
   db.query(
     sqlUpdate, 
-    [name, price, description, image_url, category || "Premier Watches", stock || 15, formattedSpecs, gender || "Unisex", brand || "Other", productId], 
+    [name.trim(), Number(price), description || "", image_url.trim(), category || "Premier Watches", stock || 15, formattedSpecs, gender || "Unisex", brand || "Other", productId], 
     (err: any, result: any) => {
       if (err) {
         console.error("Error updating product in MySQL:", err);
@@ -500,6 +580,9 @@ app.put("/api/products/:id", (req, res) => {
 // Delete a product from MySQL database
 app.delete("/api/products/:id", (req, res) => {
   const productId = req.params.id;
+
+  // Invalidate cache immediately on catalog delete
+  memoryCache = null;
 
   if (!db) {
     return res.status(500).json({ error: "Database not connected" });
