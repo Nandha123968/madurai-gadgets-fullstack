@@ -139,10 +139,90 @@ export default function StockManagementView({
           </div>
         </div>
 
-        {/* RECENT INVENTORY TABLE */}
-        <div className="overflow-x-auto border border-zinc-200 rounded-sm">
-          <table className="w-full text-left text-xs text-zinc-700 min-w-[700px]">
-            <thead className="bg-zinc-50 border-b border-zinc-200 font-mono text-[9px] text-zinc-500 uppercase tracking-wider font-black">
+      {/* RECENT INVENTORY LIST - MOBILE CARDS */}
+      <div className="block sm:hidden space-y-4">
+        {activeItems.length === 0 ? (
+          <p className="p-8 text-center text-zinc-400 italic font-bold">No matching watch models found.</p>
+        ) : (
+          activeItems.map((prod) => {
+            const isSoldOut = prod.stock === 0;
+            const isLow = prod.stock > 0 && prod.stock <= 5;
+            return (
+              <div key={prod.id} className="bg-white border border-zinc-200 p-4 rounded shadow-xs space-y-4">
+                <div className="flex items-center gap-3">
+                  <div className="w-12 h-12 bg-zinc-50 border border-zinc-200 p-1 flex items-center justify-center rounded overflow-hidden shrink-0">
+                    {renderProductIllustration(prod.image, "h-10")}
+                  </div>
+                  <div className="min-w-0 flex-1">
+                    <h4 className="font-bold text-zinc-950 truncate text-xs">{prod.name}</h4>
+                    <p className="text-[10px] text-zinc-500 font-mono mt-0.5">{prod.id} &bull; {prod.category}</p>
+                  </div>
+                </div>
+
+                <div className="flex justify-between items-center border-t border-b border-zinc-100 py-2.5">
+                  <div>
+                    <span className="block text-[8px] font-mono text-zinc-400 uppercase font-black mb-0.5">Status</span>
+                    {isSoldOut ? (
+                      <span className="bg-red-50 text-red-700 border border-red-200 text-[9px] font-black uppercase px-2 py-0.5 rounded-sm">Sold Out 🚫</span>
+                    ) : isLow ? (
+                      <span className="bg-amber-50 text-amber-700 border border-amber-200 text-[9px] font-black uppercase px-2 py-0.5 rounded-sm">Low Alert ⚠️ ({prod.stock})</span>
+                    ) : (
+                      <span className="bg-green-50 text-green-700 border border-green-200 text-[9px] font-black uppercase px-2 py-0.5 rounded-sm">In Stock ({prod.stock})</span>
+                    )}
+                  </div>
+                  
+                  <div className="flex flex-col items-end">
+                    <span className="text-[8px] font-mono text-zinc-400 uppercase font-black mb-1">Stock Level</span>
+                    <div className="flex items-center gap-1">
+                      <button
+                        type="button"
+                        onClick={() => { updateStock(prod.id, prod.stock - 1); triggerToast(`Decremented "${prod.name}" stock!`, "info"); }}
+                        className="w-7 h-7 border border-zinc-300 hover:bg-zinc-100 flex items-center justify-center text-zinc-800 rounded-sm cursor-pointer text-xs"
+                      >
+                        <Minus className="w-3 h-3" />
+                      </button>
+                      <input
+                        type="number"
+                        value={prod.stock}
+                        onChange={(e) => { const v = Number(e.target.value); updateStock(prod.id, v); }}
+                        className="w-10 text-center border border-zinc-300 rounded-sm py-0.5 text-xs font-mono font-black focus:outline-none"
+                      />
+                      <button
+                        type="button"
+                        onClick={() => { updateStock(prod.id, prod.stock + 1); triggerToast(`Incremented "${prod.name}" stock!`, "success"); }}
+                        className="w-7 h-7 border border-zinc-300 hover:bg-zinc-100 flex items-center justify-center text-zinc-800 rounded-sm cursor-pointer text-xs"
+                      >
+                        <Plus className="w-3 h-3" />
+                      </button>
+                    </div>
+                  </div>
+                </div>
+
+                <div className="flex justify-end gap-1.5 pt-1">
+                  <button
+                    type="button"
+                    onClick={() => { updateStock(prod.id, 0); triggerToast(`Marked "${prod.name}" sold-out!`, "warning"); }}
+                    className="px-3 py-1.5 bg-red-50 hover:bg-red-500 hover:text-white border border-red-200 text-red-700 text-[9px] font-black uppercase rounded-xs transition-colors cursor-pointer"
+                  >
+                    Zero Out
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => { updateStock(prod.id, 15); triggerToast(`Refilled "${prod.name}" stock to 15!`, "success"); }}
+                    className="px-3 py-1.5 bg-green-50 hover:bg-green-500 hover:text-white border border-green-200 text-green-700 text-[9px] font-black uppercase rounded-xs transition-colors cursor-pointer"
+                  >
+                    Refill (15)
+                  </button>
+                </div>
+              </div>
+            );
+          })
+        )}
+
+      {/* RECENT INVENTORY TABLE - DESKTOP VIEW */}
+      <div className="hidden sm:block overflow-x-auto border border-zinc-200 rounded-sm">
+        <table className="w-full text-left text-xs text-zinc-700 min-w-[700px]">
+          <thead className="bg-zinc-50 border-b border-zinc-200 font-mono text-[9px] text-zinc-500 uppercase tracking-wider font-black">
               <tr>
                 <th className="p-3 w-28">Reference ID</th>
                 <th className="p-3 w-16 text-center">Visual</th>
@@ -257,6 +337,7 @@ export default function StockManagementView({
             </tbody>
           </table>
         </div>
+      </div>
 
         {/* Pagination */}
         {totalPages > 1 && (

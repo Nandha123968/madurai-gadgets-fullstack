@@ -360,7 +360,13 @@ Please confirm availability and share GPay/PhonePe QR Code so I can secure it ri
   const [cart, setCart] = useState<CartItem[]>([]);
   const [isCartOpen, setIsCartOpen] = useState<boolean>(false);
   const [couponCode, setCouponCode] = useState<string>("");
-  const [discountPercent, setDiscountPercent] = useState<number>(10);
+  const [discountPercent, setDiscountPercent] = useState<number>(() => {
+    if (typeof window !== "undefined") {
+      const stored = localStorage.getItem("madurai_default_discount");
+      return stored ? Number(stored) : 0;
+    }
+    return 0;
+  });
   const [couponFeedback, setCouponFeedback] = useState<{ msg: string; success: boolean } | null>(null);
 
   // checkout form fields
@@ -373,6 +379,8 @@ Please confirm availability and share GPay/PhonePe QR Code so I can secure it ri
     phone: ""
   });
   const [isCheckingOut, setIsCheckingOut] = useState<boolean>(false);
+  const [paymentMethod, setPaymentMethod] = useState<"whatsapp" | "upi">("whatsapp");
+  const [utrNumber, setUtrNumber] = useState<string>("");
   
   // Placed orders list (persisted in LocalStorage)
   const [orders, setOrders] = useState<Order[]>([]);
@@ -382,6 +390,16 @@ Please confirm availability and share GPay/PhonePe QR Code so I can secure it ri
   const [trackingSearchQuery, setTrackingSearchQuery] = useState<string>("");
   const [foundOrder, setFoundOrder] = useState<Order | null>(null);
   const [isSearched, setIsSearched] = useState<boolean>(false);
+  const [deletingOrderId, setDeletingOrderId] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (deletingOrderId) {
+      const timer = setTimeout(() => {
+        setDeletingOrderId(null);
+      }, 3000);
+      return () => clearTimeout(timer);
+    }
+  }, [deletingOrderId]);
 
   // Set page title during invoice printing for PDF naming
   useEffect(() => {
@@ -757,6 +775,20 @@ Please confirm availability and share GPay/PhonePe QR Code so I can secure it ri
       return `◽ *${item.product.name}* (${item.quantity}x) - ₹${item.product.price.toLocaleString("en-IN")}`;
     }).join("\n");
 
+    const paymentSection = paymentMethod === "upi" ?
+`--------------------------------------
+*PAYMENT STATUS (UPI DIRECT):*
+💳 *Payment Method:* Direct UPI Transfer
+💵 *Amount Paid:* ₹${cartTotal.toLocaleString("en-IN")}
+🔢 *UTR / Ref No:* ${utrNumber}
+✅ *Status:* Paid (Pending Verification)
+
+Machan, I have transferred the amount to your UPI ID *dineshdev5227-2@okhdfcbank* (linked number *9688616838*). Please verify my payment using the UTR number above and ship my order! 🚀`
+:
+`--------------------------------------
+*QR CODE REQUEST:*
+Machan, please send me your *GPay / PhonePe / Paytm UPI QR Code* (for UPI ID: *dineshdev5227-2@okhdfcbank* or number *9688616838*) for *₹${cartTotal.toLocaleString("en-IN")}* to complete my payment! Once you send the QR, I will transfer and send the screenshot.`;
+
     // Grand invoice greeting for WhatsApp
     const greeting = 
 `*MADURAI GADGETS 58 - NEW WATCH/ORDER REQUEST* 📦🛒
@@ -778,9 +810,7 @@ ${itemsText}
 🏛️ *Estimated Surcharge (GST 8%):* ₹${taxEst.toLocaleString("en-IN")}
 💰 *GRAND TOTAL PAYMENT:* ₹${cartTotal.toLocaleString("en-IN")}
 
---------------------------------------
-*QR CODE REQUEST:*
-Machan, please send me your *GPay / PhonePe / Paytm UPI QR Code* for *₹${cartTotal.toLocaleString("en-IN")}* to complete my payment! Once you send the QR, I will transfer and send the screenshot. 
+${paymentSection}
 
 My order is registered in the tracker with reference *${orderId}*. Thank you! 🙏✨`;
 
@@ -800,20 +830,43 @@ My order is registered in the tracker with reference *${orderId}*. Thank you! �
         minute: "2-digit"
       }),
       status: "Processing",
-      paymentStatus: "Unpaid"
+      paymentStatus: "Unpaid",
+      utr: paymentMethod === "upi" ? utrNumber : undefined,
+      paymentMethod: paymentMethod
     };
 
     const updatedOrders = [newOrder, ...orders];
     saveOrders(updatedOrders);
     setSelectedOrder(newOrder);
 
+    // Send invoice email notification to customer and CC to admin in background
+    fetch(`${API_BASE_URL}/api/send-order-email`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ order: newOrder })
+    })
+    .then(res => res.json())
+    .then(resData => {
+      if (resData.success) {
+        console.log("Invoice email sent successfully!");
+      } else {
+        console.warn("Invoice email warning:", resData.message);
+      }
+    })
+    .catch(err => {
+      console.warn("Could not dispatch invoice email:", err);
+    });
+
     // Clean configurations
     saveCart([]);
     setShippingForm({ fullName: "", email: "", address: "", city: "", zipCode: "", phone: "" });
+    setPaymentMethod("whatsapp");
+    setUtrNumber("");
     setIsCheckingOut(false);
     setIsCartOpen(false);
     setActiveTab("tracker");
-    setDiscountPercent(10);
+    const storedDefault = localStorage.getItem("madurai_default_discount");
+    setDiscountPercent(storedDefault ? Number(storedDefault) : 0);
     setCouponCode("");
     setCouponFeedback(null);
     
@@ -1328,25 +1381,6 @@ My order is registered in the tracker with reference *${orderId}*. Thank you! �
           </motion.div>
         )}
       </AnimatePresence>
-
-      {/* Dynamic Golden Yellow Announcement Scrolling Marquee Ticker */}
-      <div className="bg-yellow-400 text-gray-950 py-2.5 border-b border-yellow-500 overflow-hidden relative select-none z-45">
-        <div className="animate-marquee whitespace-nowrap gap-12 font-mono text-[10px] sm:text-xs font-black uppercase tracking-widest flex items-center">
-          <span>⚡ SALE IS ON! FLAT {discountPercent}% INSTANT DISCOUNT APPLIED STORE-WIDE ON CHECKOUT! USE PROMO CODE: "MACHAN" TO SECURE EXTRA 15% OFF! ✦</span>
-          <span>⚡ SALE IS ON! FLAT {discountPercent}% INSTANT DISCOUNT APPLIED STORE-WIDE ON CHECKOUT! USE PROMO CODE: "MACHAN" TO SECURE EXTRA 15% OFF! ✦</span>
-          <span>⚡ SALE IS ON! FLAT {discountPercent}% INSTANT DISCOUNT APPLIED STORE-WIDE ON CHECKOUT! USE PROMO CODE: "MACHAN" TO SECURE EXTRA 15% OFF! ✦</span>
-          <span>⚡ SALE IS ON! FLAT {discountPercent}% INSTANT DISCOUNT APPLIED STORE-WIDE ON CHECKOUT! USE PROMO CODE: "MACHAN" TO SECURE EXTRA 15% OFF! ✦</span>
-        </div>
-      </div>
-
-      {/* Floating active discount banner display on top! */}
-      {discountPercent > 0 && (
-        <div className="bg-gradient-to-r from-red-650 via-amber-600 to-red-650 text-white text-center py-1.5 text-[9px] sm:text-[11px] font-black uppercase tracking-widest shadow-inner z-45 relative flex items-center justify-center gap-2">
-          <span className="inline-block animate-bounce">🎉</span>
-          <span>SPECIAL CODE ACTIVE: INSTANT {discountPercent}% OFF APPLIED ON ALL YOUR PRODUCTS ON CHECKOUT!</span>
-          <span className="inline-block animate-bounce">🎉</span>
-        </div>
-      )}
 
       {/* Top Premium Navigation bar - Light Translucent Glass Theme */}
       <header className="sticky top-0 bg-white/90 backdrop-blur-md z-45 border-b border-zinc-200/80 shadow-md">
@@ -2009,9 +2043,9 @@ My order is registered in the tracker with reference *${orderId}*. Thank you! �
                         key={product.id}
                         initial={{ opacity: 0, y: 15 }}
                         animate={{ opacity: 1, y: 0 }}
-                        whileHover={{ y: -8, scale: 1.015 }}
-                        transition={{ type: "spring", stiffness: 180, damping: 20 }}
-                        className="bg-white rounded-md border border-zinc-200 shadow-sm flex flex-col justify-between group hover:shadow-xl hover:border-yellow-500 transition-all duration-300 relative overflow-hidden"
+                        whileHover={{ y: -12, scale: 1.03 }}
+                        transition={{ type: "spring", stiffness: 260, damping: 18 }}
+                        className="bg-white rounded-md border border-zinc-200 shadow-sm flex flex-col justify-between group hover:shadow-xl hover:border-yellow-500 transition-all duration-350 relative overflow-hidden"
                       >
                         
                         {/* Artwork/Illustration container section with solid gray backplate */}
@@ -2452,98 +2486,104 @@ My order is registered in the tracker with reference *${orderId}*. Thank you! �
                           </div>
                         )}
 
-                        {/* Timeline steps */}
-                        <div className="relative">
-                          <div className="absolute left-6 top-4 bottom-4 w-px bg-gray-200"></div>
+                        {/* Amazon/Flipkart Premium Step Progress Tracker */}
+                        <div className="bg-zinc-50 border border-zinc-200 p-6 rounded-md space-y-8 select-none">
+                          <p className="font-mono text-[9px] font-bold text-zinc-400 uppercase tracking-widest leading-none">Live Shipment Progress Timelines</p>
                           
-                          <div className="space-y-6 relative">
-                            {/* Step 1: Order Confirmed */}
-                            <div className="flex gap-4">
-                              <div className="w-12 h-12 rounded-full bg-green-50 border border-green-200 text-green-600 flex items-center justify-center shrink-0 z-10">
-                                <CheckCircle className="w-4 h-4 text-green-600" />
+                          {/* Stepper Container */}
+                          <div className="relative flex flex-col md:flex-row justify-between items-start md:items-center gap-6 md:gap-2">
+                            {/* Horizontal Line connecting steps (Desktop) */}
+                            <div className="absolute top-[22px] left-[5%] right-[5%] h-1 bg-zinc-200 hidden md:block z-0">
+                              <div 
+                                className="h-full bg-gradient-to-r from-green-500 via-yellow-450 to-green-600 transition-all duration-500" 
+                                style={{ 
+                                  width: selectedOrder.status === "Processing" ? "33%" : 
+                                         selectedOrder.status === "Shipped" ? "66%" : "100%" 
+                                }}
+                              />
+                            </div>
+
+                            {/* Vertical Line connecting steps (Mobile) */}
+                            <div className="absolute left-[22px] top-4 bottom-4 w-1 bg-zinc-200 block md:hidden z-0">
+                              <div 
+                                className="w-full bg-gradient-to-b from-green-500 via-yellow-450 to-green-600 transition-all duration-500" 
+                                style={{ 
+                                  height: selectedOrder.status === "Processing" ? "33%" : 
+                                          selectedOrder.status === "Shipped" ? "66%" : "100%" 
+                                }}
+                              />
+                            </div>
+
+                            {/* Step 1: Registered */}
+                            <div className="relative z-10 flex flex-row md:flex-col items-center gap-4 md:gap-2 md:text-center flex-1">
+                              <div className="w-12 h-12 rounded-full bg-green-500 text-white border-4 border-white shadow-md flex items-center justify-center shrink-0">
+                                <Check className="w-5 h-5 font-black stroke-[3]" />
                               </div>
-                              <div className="pt-2">
-                                <h4 className="font-display font-black text-xs text-gray-950 uppercase tracking-wider">1. Order Registered (Verified)</h4>
-                                <p className="text-[11px] text-gray-500 mt-0.5 font-medium">WhatsApp order reference verified. Unique invoice ticket locked in store registry.</p>
+                              <div className="md:pt-1">
+                                <h4 className="text-xs font-bold text-zinc-900 uppercase tracking-wide">Ordered</h4>
+                                <p className="text-[10px] text-zinc-500 font-mono mt-0.5">Order Verified</p>
                               </div>
                             </div>
 
-                            {/* Step 2: Quality Checked & Packed */}
-                            <div className="flex gap-4">
-                              <div className={`w-12 h-12 rounded-full flex items-center justify-center shrink-0 z-10 border ${
-                                selectedOrder.status === "Processing"
-                                  ? "bg-yellow-50 border-yellow-400 text-yellow-700 animate-pulse"
-                                  : "bg-green-50 border-green-200 text-green-600"
-                              }`}>
-                                {selectedOrder.status === "Processing" ? (
-                                  <Loader2 className="w-4 h-4 animate-spin text-yellow-600" />
-                                ) : (
-                                  <CheckCircle className="w-4 h-4 text-green-600" />
-                                )}
-                              </div>
-                              <div className="pt-2">
-                                <h4 className={`font-display text-xs uppercase tracking-wider ${
-                                  selectedOrder.status === "Processing" ? "font-black text-yellow-600" : "font-black text-gray-850"
-                                }`}>2. Quality Checked & Casing Inspection</h4>
-                                <p className="text-[11px] text-gray-500 mt-0.5 font-medium">
-                                  Individual validation of sweep chronometer, bezel rotatability, and steel bracelet buckle locking. Shock-padded packaging sealed.
-                                </p>
-                              </div>
-                            </div>
+                            {/* Step 2: Quality Checked */}
+                            {(() => {
+                              const isPassed = selectedOrder.status !== "Processing";
+                              const isActive = selectedOrder.status === "Processing";
+                              return (
+                                <div className="relative z-10 flex flex-row md:flex-col items-center gap-4 md:gap-2 md:text-center flex-1">
+                                  <div className={`w-12 h-12 rounded-full border-4 border-white shadow-md flex items-center justify-center shrink-0 transition-all duration-300 ${
+                                    isPassed ? "bg-green-500 text-white" : 
+                                    isActive ? "bg-yellow-450 text-gray-950 animate-pulse" : 
+                                    "bg-zinc-200 text-zinc-400"
+                                  }`}>
+                                    <Sparkles className="w-5 h-5" />
+                                  </div>
+                                  <div className="md:pt-1">
+                                    <h4 className={`text-xs font-bold uppercase tracking-wide ${isActive ? "text-yellow-600 font-black" : isPassed ? "text-zinc-900" : "text-zinc-400"}`}>Packed</h4>
+                                    <p className="text-[10px] text-zinc-500 font-mono mt-0.5">Quality Verified</p>
+                                  </div>
+                                </div>
+                              );
+                            })()}
 
-                            {/* Step 3: Courier Shipment Dispatch */}
-                            <div className="flex gap-4">
-                              <div className={`w-12 h-12 rounded-full flex items-center justify-center shrink-0 z-10 border ${
-                                selectedOrder.status === "Processing"
-                                  ? "bg-gray-50 border-gray-200 text-gray-400"
-                                  : selectedOrder.status === "Shipped"
-                                  ? "bg-yellow-50 border-yellow-400 text-yellow-700 animate-pulse"
-                                  : "bg-green-50 border-green-200 text-green-600"
-                              }`}>
-                                {selectedOrder.status === "Processing" ? (
-                                  <Truck className="w-4 h-4 text-gray-400" />
-                                ) : selectedOrder.status === "Shipped" ? (
-                                  <Truck className="w-4 h-4 text-yellow-600 animate-bounce" />
-                                ) : (
-                                  <CheckCircle className="w-4 h-4 text-green-600" />
-                                )}
-                              </div>
-                              <div className="pt-2">
-                                <h4 className={`font-display text-xs uppercase tracking-wider ${
-                                  selectedOrder.status === "Shipped" ? "font-black text-yellow-600" : selectedOrder.status === "Processing" ? "text-gray-400" : "font-black text-gray-850"
-                                }`}>3. Dispatched in Transit (ST Courier Cargo)</h4>
-                                <p className="text-[11px] text-gray-500 mt-0.5 font-medium">
-                                  {selectedOrder.stCourierId ? (
-                                    <span>Consignment ID <b className="text-gray-900 font-bold">"{selectedOrder.stCourierId}"</b> handed off to ST Courier services. Real-time air transit routed to regional office hub.</span>
-                                  ) : (
-                                    <span>Consignment handed off to priority express courier agency. Estimated delivery of premium replica is 2-4 working days across India limit.</span>
-                                  )}
-                                </p>
-                              </div>
-                            </div>
+                            {/* Step 3: Shipped */}
+                            {(() => {
+                              const isPassed = selectedOrder.status === "Delivered";
+                              const isActive = selectedOrder.status === "Shipped";
+                              return (
+                                <div className="relative z-10 flex flex-row md:flex-col items-center gap-4 md:gap-2 md:text-center flex-1">
+                                  <div className={`w-12 h-12 rounded-full border-4 border-white shadow-md flex items-center justify-center shrink-0 transition-all duration-300 ${
+                                    isPassed ? "bg-green-500 text-white" : 
+                                    isActive ? "bg-yellow-450 text-gray-950 animate-pulse" : 
+                                    "bg-zinc-200 text-zinc-400"
+                                  }`}>
+                                    <Truck className={`w-5 h-5 ${isActive ? "animate-bounce" : ""}`} />
+                                  </div>
+                                  <div className="md:pt-1">
+                                    <h4 className={`text-xs font-bold uppercase tracking-wide ${isActive ? "text-yellow-600 font-black" : isPassed ? "text-zinc-900" : "text-zinc-400"}`}>Shipped</h4>
+                                    <p className="text-[10px] text-zinc-500 font-mono mt-0.5">In Transit</p>
+                                  </div>
+                                </div>
+                              );
+                            })()}
 
-                            {/* Step 4: Arrived & Handed Over */}
-                            <div className="flex gap-4">
-                              <div className={`w-12 h-12 rounded-full flex items-center justify-center shrink-0 z-10 border ${
-                                selectedOrder.status === "Delivered"
-                                  ? "bg-green-50 border-green-200 text-green-600"
-                                  : "bg-gray-50 border-gray-200 text-gray-400"
-                              }`}>
-                                {selectedOrder.status === "Delivered" ? (
-                                  <Award className="w-4 h-4 text-green-600" />
-                                ) : (
-                                  <Award className="w-4 h-4 text-gray-400" />
-                                )}
-                              </div>
-                              <div className="pt-2">
-                                <h4 className={`font-display text-xs uppercase tracking-wider ${
-                                  selectedOrder.status === "Delivered" ? "font-black text-green-600" : "text-gray-400"
-                                }`}>4. Out For Direct Handover 🎉</h4>
-                                <p className="text-[11px] text-gray-500 mt-0.5 font-medium">
-                                  Logistics executive successfully arrived at delivery destination. Handover clearance and receipt verified. Thank you for placing trust in Madurai Gadgets 58.
-                                </p>
-                              </div>
-                            </div>
+                            {/* Step 4: Delivered */}
+                            {(() => {
+                              const isActive = selectedOrder.status === "Delivered";
+                              return (
+                                <div className="relative z-10 flex flex-row md:flex-col items-center gap-4 md:gap-2 md:text-center flex-1">
+                                  <div className={`w-12 h-12 rounded-full border-4 border-white shadow-md flex items-center justify-center shrink-0 transition-all duration-300 ${
+                                    isActive ? "bg-green-600 text-white shadow-green-200/50" : "bg-zinc-200 text-zinc-400"
+                                  }`}>
+                                    <Award className="w-5 h-5" />
+                                  </div>
+                                  <div className="md:pt-1">
+                                    <h4 className={`text-xs font-bold uppercase tracking-wide ${isActive ? "text-green-600 font-black" : "text-zinc-400"}`}>Delivered</h4>
+                                    <p className="text-[10px] text-zinc-500 font-mono mt-0.5">Handed Over</p>
+                                  </div>
+                                </div>
+                              );
+                            })()}
 
                           </div>
                         </div>
@@ -2629,6 +2669,30 @@ My order is registered in the tracker with reference *${orderId}*. Thank you! �
                             <p className="text-gray-500 mt-0.5">{selectedOrder.shipping.city}, {selectedOrder.shipping.zipCode}</p>
                           </div>
                         </div>
+
+                        {/* Payment verification details */}
+                        {(selectedOrder.paymentStatus || selectedOrder.utr) && (
+                          <div className="bg-zinc-50/50 p-5 rounded-sm border border-gray-250 border-t-0 text-xs text-zinc-800 leading-relaxed font-sans flex flex-col sm:flex-row sm:items-center justify-between gap-3 -mt-8">
+                            <div>
+                              <p className="font-mono font-bold text-[9px] text-zinc-400 uppercase tracking-[0.25em] mb-2">Payment Verification</p>
+                              <div className="flex items-center gap-2 mt-1">
+                                <span className={`text-[10px] px-2 py-0.5 font-mono font-bold rounded-sm border ${
+                                  (selectedOrder.paymentStatus || "Unpaid") === "Paid"
+                                    ? "bg-green-50 text-green-700 border-green-200"
+                                    : "bg-red-50 text-red-700 border-red-200"
+                                }`}>
+                                  {(selectedOrder.paymentStatus || "Unpaid") === "Paid" ? "✓ PAID" : "✗ UNPAID (Awaiting Verification)"}
+                                </span>
+                              </div>
+                            </div>
+                            {selectedOrder.utr && (
+                              <div className="text-left sm:text-right">
+                                <span className="font-mono font-bold text-[9px] text-zinc-400 uppercase tracking-[0.25em] block mb-2">Transaction Reference (UTR)</span>
+                                <span className="font-mono text-zinc-900 font-bold text-xs select-all">{selectedOrder.utr}</span>
+                              </div>
+                            )}
+                          </div>
+                        )}
 
                       </div>
                     ) : null}
@@ -2773,11 +2837,11 @@ My order is registered in the tracker with reference *${orderId}*. Thank you! �
             </div>
 
             {/* SUB TAB CONTROLLERS FOR MERCHANT SUITE */}
-            <div className="flex border-b border-gray-200 gap-2 pt-2">
+            <div className="flex overflow-x-auto border-b border-gray-200 gap-2 pt-2 scrollbar-none whitespace-nowrap scroll-smooth">
               <button
                 type="button"
                 onClick={() => setMerchantSubTab("inventory")}
-                className={`pb-3 px-4 text-xs uppercase tracking-widest font-mono transition-all border-b-2 ${
+                className={`pb-3 px-4 text-xs uppercase tracking-widest font-mono transition-all border-b-2 shrink-0 ${
                   merchantSubTab === "inventory"
                     ? "border-yellow-500 text-gray-900 font-black"
                     : "border-transparent text-gray-500 hover:text-gray-950"
@@ -2788,7 +2852,7 @@ My order is registered in the tracker with reference *${orderId}*. Thank you! �
               <button
                 type="button"
                 onClick={() => setMerchantSubTab("stock")}
-                className={`pb-3 px-4 text-xs uppercase tracking-widest font-mono transition-all border-b-2 ${
+                className={`pb-3 px-4 text-xs uppercase tracking-widest font-mono transition-all border-b-2 shrink-0 ${
                   merchantSubTab === "stock"
                     ? "border-yellow-500 text-gray-900 font-black"
                     : "border-transparent text-gray-500 hover:text-gray-950"
@@ -2799,7 +2863,7 @@ My order is registered in the tracker with reference *${orderId}*. Thank you! �
               <button
                 type="button"
                 onClick={() => setMerchantSubTab("orders")}
-                className={`pb-3 px-4 text-xs uppercase tracking-widest font-mono transition-all border-b-2 ${
+                className={`pb-3 px-4 text-xs uppercase tracking-widest font-mono transition-all border-b-2 shrink-0 ${
                   merchantSubTab === "orders"
                     ? "border-yellow-500 text-gray-900 font-black"
                     : "border-transparent text-gray-500 hover:text-gray-950"
@@ -2810,7 +2874,7 @@ My order is registered in the tracker with reference *${orderId}*. Thank you! �
               <button
                 type="button"
                 onClick={() => setMerchantSubTab("bulk")}
-                className={`pb-3 px-4 text-xs uppercase tracking-widest font-mono transition-all border-b-2 ${
+                className={`pb-3 px-4 text-xs uppercase tracking-widest font-mono transition-all border-b-2 shrink-0 ${
                   merchantSubTab === "bulk"
                     ? "border-yellow-500 text-gray-900 font-black"
                     : "border-transparent text-gray-500 hover:text-gray-950"
@@ -3192,6 +3256,43 @@ My order is registered in the tracker with reference *${orderId}*. Thank you! �
               {/* SECTION B: ACTIONS DECK & GLOBAL BULK ADJUSTMENTS (4 cols) */}
               <div className="lg:col-span-4 space-y-6">
                 
+                {/* DEFAULT STORE DISCOUNT MANAGER CARD */}
+                <div className="bg-white border border-gray-200 p-5 rounded-sm space-y-4 shadow-sm">
+                  <div>
+                    <span className="text-[9px] font-mono font-bold uppercase tracking-widest text-emerald-805 bg-emerald-50 border border-emerald-200 px-2 py-0.5 rounded-sm">
+                      Store Discount Manager
+                    </span>
+                    <h3 className="text-sm font-display font-black text-gray-900 mt-1.5 uppercase tracking-wide">
+                      Site-wide Default Discount
+                    </h3>
+                    <p className="text-xs text-gray-500 font-medium">
+                      Configure the default discount percentage applied automatically to all products at checkout.
+                    </p>
+                  </div>
+
+                  <div className="space-y-4 text-xs font-sans text-gray-700">
+                    <div>
+                      <label className="block font-mono text-[10px] text-gray-400 uppercase tracking-wider mb-1 font-bold">Default Discount (%)</label>
+                      <input
+                        type="number"
+                        min={0}
+                        max={100}
+                        value={discountPercent}
+                        onChange={(e) => {
+                          const val = Math.max(0, Math.min(100, Number(e.target.value)));
+                          setDiscountPercent(val);
+                          localStorage.setItem("madurai_default_discount", val.toString());
+                        }}
+                        className="w-full bg-white border border-gray-300 p-2.5 rounded-sm text-gray-900 font-mono font-bold"
+                        placeholder="e.g. 0 for no discount"
+                      />
+                    </div>
+                    <p className="text-[10px] font-mono text-zinc-500 leading-normal">
+                      💡 Tip: Set to <strong className="text-zinc-950">0</strong> to disable automatic store-wide discounts. Customers can still use promo codes like "MACHAN" (15% off) or "WELCOME" (10% off).
+                    </p>
+                  </div>
+                </div>
+
                 {/* GLOBAL PRICE OFFSET MANAGER CARD */}
                 <div className="bg-white border border-gray-200 p-5 rounded-sm space-y-4 shadow-sm">
                   <div>
@@ -3501,8 +3602,105 @@ My order is registered in the tracker with reference *${orderId}*. Thank you! �
 
                 return (
                   <div className="space-y-4">
-                    {/* Compact responsive table wrapper */}
-                    <div className="overflow-x-auto border border-gray-200 rounded-sm">
+                    {/* Mobile View: Stacked Cards (block sm:hidden) */}
+                    <div className="block sm:hidden space-y-4">
+                      {activePageItems.length === 0 ? (
+                        <p className="p-8 text-center text-gray-400 italic font-semibold">No products found matching "{merchantSearchQuery}"</p>
+                      ) : (
+                        activePageItems.map((prod) => (
+                          <div key={prod.id} className="bg-white border border-zinc-200 p-4 rounded shadow-sm space-y-4">
+                            <div className="flex items-center gap-3">
+                              <div className="w-12 h-12 bg-zinc-50 border border-zinc-200 p-1 flex items-center justify-center rounded overflow-hidden shrink-0">
+                                {renderProductIllustration(prod.image, "h-10")}
+                              </div>
+                              <div className="min-w-0 flex-1">
+                                <h4 className="font-bold text-zinc-950 truncate text-xs">{prod.name}</h4>
+                                <p className="text-[10px] text-zinc-500 font-mono mt-0.5">{prod.id} &bull; {prod.category}</p>
+                              </div>
+                            </div>
+
+                            <div className="grid grid-cols-2 gap-3 border-t border-b border-zinc-100 py-3 text-xs">
+                              <div>
+                                <label className="block text-[8px] font-mono text-zinc-400 uppercase font-black mb-1 font-bold">Price (₹ INR)</label>
+                                <input
+                                  type="number"
+                                  value={prod.price}
+                                  onChange={(e) => {
+                                    const val = Number(e.target.value);
+                                    const updatedList = products.map((item) => (item.id === prod.id ? { ...item, price: val } : item));
+                                    setProducts(updatedList);
+                                    saveStoredProducts(updatedList);
+                                  }}
+                                  className="w-full bg-white border border-zinc-300 px-2 py-1 rounded-sm text-zinc-900 font-mono focus:border-yellow-500 focus:outline-none font-bold"
+                                />
+                              </div>
+
+                              <div>
+                                <label className="block text-[8px] font-mono text-zinc-400 uppercase font-black mb-1 font-bold">Stock Level</label>
+                                <input
+                                  type="number"
+                                  value={prod.stock}
+                                  onChange={(e) => {
+                                    const val = Number(e.target.value);
+                                    const updatedList = products.map((item) => (item.id === prod.id ? { ...item, stock: val } : item));
+                                    setProducts(updatedList);
+                                    saveStoredProducts(updatedList);
+                                  }}
+                                  className={`w-full bg-white border px-2 py-1 rounded-sm text-zinc-900 font-mono focus:border-yellow-500 focus:outline-none font-bold ${
+                                    prod.stock <= 5 ? "border-red-300 text-red-650 bg-red-50" : "border-zinc-300"
+                                  }`}
+                                />
+                              </div>
+                            </div>
+
+                            <div className="flex justify-end gap-1.5 pt-1">
+                              <button
+                                type="button"
+                                onClick={() => {
+                                  saveStoredProducts(products);
+                                  triggerToast(`Watch ${prod.id} updated successfully!`, "success");
+                                }}
+                                className="px-3 py-1.5 bg-yellow-400 text-gray-950 rounded-sm hover:bg-yellow-500 text-[9px] font-black uppercase transition-all cursor-pointer font-bold"
+                              >
+                                ✓ Save
+                              </button>
+                              <button
+                                type="button"
+                                onClick={() => setEditingProduct(prod)}
+                                className="px-3 py-1.5 bg-blue-50 hover:bg-blue-100 text-blue-650 rounded-sm border border-blue-200 text-[9px] font-black uppercase transition-all cursor-pointer font-bold"
+                              >
+                                ✏ Edit
+                              </button>
+                              <button
+                                type="button"
+                                onClick={async () => {
+                                  if (confirm(`Are you sure you want to delete "${prod.name}" permanently from the live catalog?`)) {
+                                    const isNumericId = /^\d+$/.test(prod.id);
+                                    if (isNumericId) {
+                                      try {
+                                        await fetch(`${API_BASE_URL}/api/products/${prod.id}`, { method: "DELETE" });
+                                      } catch (err) {
+                                        console.error(err);
+                                      }
+                                    }
+                                    const updated = products.filter(p => p.id !== prod.id);
+                                    setProducts(updated);
+                                    saveStoredProducts(updated);
+                                    triggerToast(`Watch "${prod.name}" deleted successfully! ✕`, "info");
+                                  }
+                                }}
+                                className="px-3 py-1.5 bg-red-50 hover:bg-red-500 hover:text-white text-red-650 rounded-sm border border-red-200 text-[9px] font-black uppercase transition-all cursor-pointer font-bold"
+                              >
+                                ✕ Del
+                              </button>
+                            </div>
+                          </div>
+                        ))
+                      )}
+                    </div>
+
+                    {/* Desktop View Table (hidden sm:block) */}
+                    <div className="hidden sm:block overflow-x-auto border border-gray-200 rounded-sm">
                       <table className="w-full text-left text-xs font-sans text-gray-700 min-w-[700px]">
                         <thead className="bg-gray-50 border-b border-gray-200 text-[10px] font-mono text-gray-500 uppercase tracking-wider font-bold">
                           <tr>
@@ -3774,216 +3972,332 @@ My order is registered in the tracker with reference *${orderId}*. Thank you! �
                     </p>
                   </div>
                 ) : (
-                  <div className="overflow-x-auto border border-gray-200 rounded-sm">
-                    <table className="w-full text-left text-xs min-w-[800px]">
-                      <thead className="bg-gray-50 border-b border-gray-200 uppercase tracking-wider text-gray-500 font-mono text-[9px] font-bold">
-                        <tr>
-                          <th className="p-3.5">Reference ID</th>
-                          <th className="p-3.5">Recipient Profile</th>
-                          <th className="p-3.5">Total Bill</th>
-                          <th className="p-3.5">Payment</th>
-                          <th className="p-3.5">Purchase Order</th>
-                          <th className="p-3.5">Fulfillment Status</th>
-                          <th className="p-3.5">Date</th>
-                          <th className="p-3.5 text-right">Invoice / Actions</th>
-                        </tr>
-                      </thead>
-                      <tbody className="divide-y divide-gray-100 bg-white">
-                        {orders.map((ord) => (
-                          <tr key={ord.id} className="hover:bg-gray-50 transition-colors">
-                            <td className="p-3.5 font-mono text-gray-900 font-bold">{ord.id}</td>
-                            <td className="p-3.5 font-sans text-xs">
-                              <p className="text-gray-950 font-bold leading-none mb-1">{ord.shipping.fullName}</p>
+                  <div className="space-y-4">
+                    {/* Mobile View: Stacked Cards (block sm:hidden) */}
+                    <div className="block sm:hidden space-y-4">
+                      {orders.map((ord) => {
+                        const isDeleting = deletingOrderId === ord.id;
+                        return (
+                          <div key={ord.id} className="bg-white border border-zinc-200 p-4 rounded shadow-sm space-y-4 relative">
+                            {/* Header details */}
+                            <div className="flex justify-between items-center border-b border-zinc-150 pb-2">
+                              <span className="font-mono text-xs font-black text-zinc-900">{ord.id}</span>
+                              <span className="text-[10px] text-zinc-400 font-bold font-mono">{ord.date.split(" at ")[0]}</span>
+                            </div>
+
+                            {/* Recipient Details */}
+                            <div className="space-y-1 text-xs">
+                              <p className="text-zinc-900 font-extrabold">{ord.shipping.fullName}</p>
                               {ord.shipping.phone && (
-                                <p className="text-[10px] text-yellow-600 font-mono font-black mb-1">📞 {ord.shipping.phone}</p>
+                                <a href={`tel:${ord.shipping.phone}`} className="text-[10px] text-yellow-600 font-mono font-black block mb-1">
+                                  📞 {ord.shipping.phone}
+                                </a>
                               )}
-                              <p className="text-[10px] text-gray-400 font-medium">{ord.shipping.city} ({ord.shipping.zipCode})</p>
-                            </td>
-                            <td className="p-3.5 font-mono text-gray-900 text-xs font-black">
-                              ₹{ord.total.toLocaleString("en-IN")}
-                            </td>
-                            <td className="p-3.5">
-                              <select
-                                value={ord.paymentStatus || "Unpaid"}
-                                onChange={(e) => {
-                                  const val = e.target.value as "Unpaid" | "Paid";
-                                  const updated = orders.map((o) => {
-                                    if (o.id === ord.id) {
-                                      return { ...o, paymentStatus: val };
-                                    }
-                                    return o;
-                                  });
+                              <p className="text-[10px] text-zinc-500 font-medium">{ord.shipping.city} ({ord.shipping.zipCode})</p>
+                            </div>
+
+                            {/* Items Breakdown inside Card */}
+                            <div className="bg-zinc-50 p-3 rounded-sm border border-zinc-200 text-[11px] text-zinc-700 space-y-1">
+                              <p className="font-mono text-[8px] font-bold text-zinc-400 uppercase tracking-wider mb-1">Items Ordered:</p>
+                              {ord.items.map((item, idx) => (
+                                <div key={idx} className="flex justify-between font-medium">
+                                  <span className="truncate max-w-[190px]">{item.product.name} (x{item.quantity})</span>
+                                  <span className="font-mono font-semibold">₹{(item.product.price * item.quantity).toLocaleString("en-IN")}</span>
+                                </div>
+                              ))}
+                              <div className="border-t border-zinc-200 pt-2 flex justify-between font-bold text-zinc-900 mt-1.5">
+                                <span>Grand Total:</span>
+                                <span className="font-mono text-xs text-yellow-600 font-black">₹{ord.total.toLocaleString("en-IN")}</span>
+                              </div>
+                            </div>
+
+                            {/* Payment and Fulfillment Selectors */}
+                            <div className="grid grid-cols-2 gap-2 text-xs">
+                              <div>
+                                <label className="block text-[8px] font-mono text-zinc-400 uppercase font-black mb-1">Payment</label>
+                                <select
+                                  value={ord.paymentStatus || "Unpaid"}
+                                  onChange={(e) => {
+                                    const val = e.target.value as "Unpaid" | "Paid";
+                                    const updated = orders.map((o) => (o.id === ord.id ? { ...o, paymentStatus: val } : o));
+                                    saveOrders(updated);
+                                    if (selectedOrder?.id === ord.id) setSelectedOrder({ ...selectedOrder, paymentStatus: val });
+                                    triggerToast(`Bill of ${ord.id} marked as ${val}!`, "success");
+                                  }}
+                                  className={`w-full text-[11px] border px-2 py-1.5 focus:outline-none font-mono font-black rounded-sm ${
+                                    (ord.paymentStatus || "Unpaid") === "Paid"
+                                      ? "bg-green-50 text-green-700 border-green-200"
+                                      : "bg-red-50 text-red-700 border-red-200"
+                                  }`}
+                                >
+                                  <option value="Unpaid" className="bg-white text-red-750 font-bold">❌ Unpaid</option>
+                                  <option value="Paid" className="bg-white text-green-750 font-bold">✅ Paid</option>
+                                </select>
+                              </div>
+
+                              <div>
+                                <label className="block text-[8px] font-mono text-zinc-400 uppercase font-black mb-1">Fulfillment Status</label>
+                                <select
+                                  value={ord.status}
+                                  onChange={(e) => {
+                                    const val = e.target.value as "Processing" | "Shipped" | "Delivered";
+                                    const updated = orders.map((o) => (o.id === ord.id ? { ...o, status: val } : o));
+                                    saveOrders(updated);
+                                    if (selectedOrder?.id === ord.id) setSelectedOrder({ ...selectedOrder, status: val });
+                                    triggerToast(`Status of ${ord.id} changed to ${val}!`, "success");
+                                  }}
+                                  className="w-full bg-white text-[11px] border border-zinc-200 px-2 py-1.5 focus:border-yellow-500 focus:outline-none text-zinc-900 font-mono font-black rounded-sm"
+                                >
+                                  <option value="Processing" className="bg-white text-yellow-750 font-bold">Processing 📦</option>
+                                  <option value="Shipped" className="bg-white text-blue-750 font-bold font-mono">Shipped 🚚</option>
+                                  <option value="Delivered" className="bg-white text-green-750 font-bold font-mono">Delivered ✅</option>
+                                </select>
+                              </div>
+                            </div>
+
+                            {/* ST Courier ID input */}
+                            <div>
+                              <label className="block text-[8px] font-mono text-zinc-400 uppercase font-black mb-1 font-bold">ST Courier Consignment ID</label>
+                              <input
+                                type="text"
+                                placeholder="ST Courier ID (e.g. ST940381)"
+                                defaultValue={ord.stCourierId || ""}
+                                onBlur={(e) => {
+                                  const val = e.target.value.trim();
+                                  const updated = orders.map((o) => (o.id === ord.id ? { ...o, stCourierId: val } : o));
                                   saveOrders(updated);
-                                  // Update selectedOrder if active
-                                  if (selectedOrder?.id === ord.id) {
-                                    setSelectedOrder({ ...selectedOrder, paymentStatus: val });
-                                  }
-                                  triggerToast(`Bill of ${ord.id} marked as ${val}!`, "success");
+                                  if (selectedOrder?.id === ord.id) setSelectedOrder({ ...selectedOrder, stCourierId: val });
+                                  if (val) triggerToast(`ST Courier ID saved as ${val} for ${ord.id}!`, "success");
                                 }}
-                                className={`text-[11px] border px-2 py-1 focus:outline-none font-mono font-black rounded-sm ${
+                                className="bg-zinc-50 border border-zinc-200 hover:border-zinc-300 focus:border-yellow-500 rounded-sm px-2.5 py-1.5 text-xs font-mono font-bold text-zinc-900 focus:outline-none w-full"
+                              />
+                            </div>
+
+                            {/* Card Footer Actions */}
+                            <div className="flex gap-2 justify-end border-t border-zinc-150 pt-3">
+                              <button
+                                type="button"
+                                onClick={() => setPrintingOrder(ord)}
+                                className="px-3.5 py-2 bg-white hover:bg-yellow-400 hover:text-gray-950 border border-zinc-250 hover:border-yellow-500 text-zinc-700 rounded-sm transition-all cursor-pointer flex items-center gap-1.5 text-[10px] font-mono font-bold shadow-xs"
+                              >
+                                <FileText className="w-3.5 h-3.5" />
+                                <span>PDF</span>
+                              </button>
+
+                              <button
+                                type="button"
+                                onClick={() => {
+                                  if ((ord.paymentStatus || "Unpaid") !== "Paid") {
+                                    triggerToast("Mark order as PAID first to unlock receipt delivery!", "info");
+                                    return;
+                                  }
+                                  let cleanPhone = ord.shipping.phone?.replace(/\D/g, "") || "9585969334";
+                                  if (cleanPhone.length === 10) cleanPhone = "91" + cleanPhone;
+                                  else if (cleanPhone.startsWith("0")) cleanPhone = "91" + cleanPhone.substring(1);
+                                  const itemsText = ord.items.map(item => `◽ *${item.product.name}* (${item.quantity}x) - ₹${item.product.price.toLocaleString("en-IN")}`).join("\n");
+                                  const whatsappMsg = `*MADURAI GADGETS 58 - OFFICIAL DIGITAL RECEIPT* 📜⌚\n--------------------------------------\nVanakkam Machan! Your payment has been successfully verified! 💳✅\n\n*CUSTOMER DETAILS:*\n👤 *Name:* ${ord.shipping.fullName}\n📞 *Phone:* ${ord.shipping.phone || "Not specified"}\n📍 *Delivery Address:* ${ord.shipping.address}, ${ord.shipping.city} - ${ord.shipping.zipCode}\n\n*ORDER REFERENCES:*\n🆔 *Invoice ID:* ${ord.id}\n📅 *Registered Date:* ${ord.date}\n🌟 *Fulfillment Status:* APPROVED & SHIPPING PREPARED 📦🚀\n💵 *Payment Status:* PAID ✦\n\n--------------------------------------\n*YOUR PURCHASE:*\n${itemsText}\n\n💰 *GRAND TOTAL:* ₹${ord.total.toLocaleString("en-IN")}\n--------------------------------------\nYour premium watch package is certified and ready for dispatch. Thank you for shopping with Madurai Gadgets 58! Wear Peak, Master Your Style! ☄️✨`;
+                                  window.open(`https://wa.me/${cleanPhone}?text=${encodeURIComponent(whatsappMsg)}`, "_blank", "noopener,noreferrer");
+                                  triggerToast("Redirecting to WhatsApp to send receipt!", "success");
+                                }}
+                                className={`px-3.5 py-2 border rounded-sm transition-all cursor-pointer flex items-center gap-1.5 text-[10px] font-mono font-bold shadow-xs ${
                                   (ord.paymentStatus || "Unpaid") === "Paid"
-                                    ? "bg-green-50 text-green-700 border-green-200"
-                                    : "bg-red-50 text-red-700 border-red-200"
+                                    ? "bg-yellow-50 border-yellow-300 text-yellow-800 hover:bg-yellow-400 hover:text-gray-950"
+                                    : "bg-zinc-100 border-zinc-200 text-zinc-400 cursor-not-allowed opacity-50"
                                 }`}
                               >
-                                <option value="Unpaid" className="bg-white text-red-700 font-bold">❌ Unpaid</option>
-                                <option value="Paid" className="bg-white text-green-700 font-bold">✅ Paid</option>
-                              </select>
-                            </td>
-                            <td className="p-3.5 max-w-[180px] truncate text-gray-700 font-medium" title={ord.items.map(i => i.product.name).join(", ")}>
-                              {ord.items.map(i => `${i.product.name} (${i.quantity}x)`).join(", ")}
-                            </td>
-                            <td className="p-3.5">
-                              <select
-                                value={ord.status}
-                                onChange={(e) => {
-                                  const val = e.target.value as "Processing" | "Shipped" | "Delivered";
-                                  const updated = orders.map((o) => {
-                                    if (o.id === ord.id) {
-                                      return { ...o, status: val };
-                                    }
-                                    return o;
-                                  });
-                                  saveOrders(updated);
-                                  // Update active selection too so customer side reflects
-                                  if (selectedOrder?.id === ord.id) {
-                                    setSelectedOrder({ ...selectedOrder, status: val });
+                                {ord.paymentStatus === "Paid" ? <Send className="w-3.5 h-3.5 text-yellow-750" /> : <Lock className="w-3.5 h-3.5 text-zinc-400" />}
+                                <span>Send</span>
+                              </button>
+
+                              <button
+                                type="button"
+                                onClick={() => {
+                                  if (!isDeleting) {
+                                    setDeletingOrderId(ord.id);
+                                  } else {
+                                    const filtered = orders.filter(o => o.id !== ord.id);
+                                    saveOrders(filtered);
+                                    if (selectedOrder?.id === ord.id) setSelectedOrder(filtered[0] || null);
+                                    setDeletingOrderId(null);
+                                    triggerToast(`Deleted ${ord.id} file!`, "info");
                                   }
-                                  triggerToast(`Status of ${ord.id} changed to ${val}!`, "success");
                                 }}
-                                className="bg-white text-xs border border-gray-300 px-2 py-1.5 focus:border-yellow-500 focus:outline-none text-gray-900 font-mono font-bold rounded-sm w-full"
+                                className={`px-3.5 py-2 rounded-sm border transition-all cursor-pointer flex items-center gap-1.5 text-[10px] font-mono font-bold shadow-xs ${
+                                  isDeleting 
+                                    ? "bg-red-600 text-white border-red-700 hover:bg-red-700 animate-pulse" 
+                                    : "bg-white hover:bg-red-50 text-red-600 border-zinc-250 hover:border-red-300"
+                                }`}
                               >
-                                <option value="Processing" className="bg-white text-yellow-700 font-bold">Processing 📦</option>
-                                <option value="Shipped" className="bg-white text-blue-700 font-bold">Shipped 🚚</option>
-                                <option value="Delivered" className="bg-white text-green-700 font-bold">Delivered ✅</option>
-                              </select>
+                                <Trash2 className="w-3.5 h-3.5" />
+                                <span>{isDeleting ? "Sure?" : "Del"}</span>
+                              </button>
+                            </div>
+                          </div>
+                        );
+                      })}
+                    </div>
 
-                              {/* ST Courier Tracking ID Input */}
-                              <div className="mt-2 flex items-center gap-1.5">
-                                <input
-                                  type="text"
-                                  placeholder="ST Courier ID (e.g. ST940381)"
-                                  defaultValue={ord.stCourierId || ""}
-                                  onBlur={(e) => {
-                                    const val = e.target.value.trim();
-                                    const updated = orders.map((o) => {
-                                      if (o.id === ord.id) {
-                                        return { ...o, stCourierId: val };
-                                      }
-                                      return o;
-                                    });
-                                    saveOrders(updated);
-                                    if (selectedOrder?.id === ord.id) {
-                                      setSelectedOrder({ ...selectedOrder, stCourierId: val });
-                                    }
-                                    if (val) {
-                                      triggerToast(`ST Courier ID saved as ${val} for ${ord.id}!`, "success");
-                                    }
-                                  }}
-                                  className="bg-zinc-50 border border-zinc-200 hover:border-zinc-300 focus:border-yellow-500 rounded-sm px-1.5 py-1 text-[10px] font-mono font-bold text-zinc-900 focus:outline-none w-full"
-                                />
-                              </div>
-                            </td>
-                            <td className="p-3.5 text-gray-400 font-mono text-[10px] whitespace-nowrap font-bold">{ord.date.split(" at ")[0]}</td>
-                            <td className="p-3.5">
-                              <div className="flex items-center justify-end gap-2 text-right">
-                                <button
-                                  type="button"
-                                  onClick={() => setPrintingOrder(ord)}
-                                  className="p-1.5 bg-white hover:bg-yellow-400 hover:text-gray-950 border border-gray-200 rounded-sm text-gray-700 transition-all cursor-pointer flex items-center gap-1 text-[10px] font-mono font-bold shadow-xs"
-                                  title="Print Premium PDF Receipt Invoice"
-                                >
-                                  <FileText className="w-3.5 h-3.5" />
-                                  <span>PDF</span>
-                                </button>
-
-                                <button
-                                  type="button"
-                                  onClick={() => {
-                                    if ((ord.paymentStatus || "Unpaid") !== "Paid") {
-                                      triggerToast("Mark order as PAID first to unlock receipt delivery!", "info");
-                                      return;
-                                    }
-                                    
-                                    let cleanPhone = ord.shipping.phone?.replace(/\D/g, "") || "9585969334";
-                                    if (cleanPhone.startsWith("91") && cleanPhone.length === 12) {
-                                      // Already includes 91 country code
-                                    } else if (cleanPhone.length === 10) {
-                                      cleanPhone = "91" + cleanPhone;
-                                    } else if (cleanPhone.startsWith("0") && cleanPhone.length === 11) {
-                                      cleanPhone = "91" + cleanPhone.substring(1);
-                                    } else if (cleanPhone.length > 10) {
-                                      cleanPhone = "91" + cleanPhone.slice(-10);
-                                    } else {
-                                      cleanPhone = "919585969334";
-                                    }
-                                    const targetPhone = cleanPhone;
-
-                                    const itemsText = ord.items.map(item => 
-                                      `◽ *${item.product.name}* (${item.quantity}x) - ₹${item.product.price.toLocaleString("en-IN")}`
-                                    ).join("\n");
-                                    
-                                    const whatsappMsg = `*MADURAI GADGETS 58 - OFFICIAL DIGITAL RECEIPT* 📜⌚
---------------------------------------
-Vanakkam Machan! Your payment has been successfully verified! 💳✅
-
-*CUSTOMER DETAILS:*
-👤 *Name:* ${ord.shipping.fullName}
-📞 *Phone:* ${ord.shipping.phone || "Not specified"}
-📍 *Delivery Address:* ${ord.shipping.address}, ${ord.shipping.city} - ${ord.shipping.zipCode}
-
-*ORDER REFERENCES:*
-🆔 *Invoice ID:* ${ord.id}
-📅 *Registered Date:* ${ord.date}
-🌟 *Fulfillment Status:* APPROVED & SHIPPING PREPARED 📦🚀
-💵 *Payment Status:* PAID ✦
-
---------------------------------------
-*YOUR PURCHASE:*
-${itemsText}
-
-💰 *GRAND TOTAL:* ₹${ord.total.toLocaleString("en-IN")}
---------------------------------------
-Your premium watch package is certified and ready for dispatch. Thank you for shopping with Madurai Gadgets 58! Wear Peak, Master Your Style! ☄️✨`;
-                                    
-                                    const whatsappUrl = `https://wa.me/${targetPhone}?text=${encodeURIComponent(whatsappMsg)}`;
-                                    window.open(whatsappUrl, "_blank", "noopener,noreferrer");
-                                    triggerToast("Redirecting to WhatsApp to send receipt!", "success");
-                                  }}
-                                  className={`p-1.5 border rounded-sm transition-all cursor-pointer flex items-center gap-1 text-[10px] font-mono font-bold shadow-xs ${
-                                    (ord.paymentStatus || "Unpaid") === "Paid"
-                                      ? "bg-yellow-50 border-yellow-300 text-yellow-800 hover:bg-yellow-400 hover:text-gray-950"
-                                      : "bg-gray-100 border-gray-200 text-gray-400 cursor-not-allowed opacity-50"
-                                  }`}
-                                  title={(ord.paymentStatus || "Unpaid") === "Paid" ? "Send verified invoice on customer WhatsApp" : "Locked (unpaid order)"}
-                                >
-                                  {ord.paymentStatus === "Paid" ? <Send className="w-3.5 h-3.5 text-yellow-700" /> : <Lock className="w-3.5 h-3.5 text-gray-400" />}
-                                  <span>Send</span>
-                                </button>
-
-                                <button
-                                  type="button"
-                                  onClick={() => {
-                                    if (confirm(`Remove order ticket ${ord.id} from local memory, machan?`)) {
-                                      const filtered = orders.filter(o => o.id !== ord.id);
-                                      saveOrders(filtered);
-                                      if (selectedOrder?.id === ord.id) {
-                                        setSelectedOrder(filtered[0] || null);
-                                      }
-                                      triggerToast(`Deleted ${ord.id} file!`, "info");
-                                    }
-                                  }}
-                                  className="p-1.5 bg-white hover:bg-red-50 text-red-600 border border-gray-200 hover:border-red-300 rounded-sm transition-all cursor-pointer shadow-xs"
-                                  title="Delete order ticket"
-                                >
-                                  <Trash2 className="w-3.5 h-3.5" />
-                                </button>
-                              </div>
-                            </td>
+                    {/* Desktop View Table (hidden sm:block) */}
+                    <div className="hidden sm:block overflow-x-auto border border-zinc-200 rounded-sm">
+                      <table className="w-full text-left text-xs min-w-[800px]">
+                        <thead className="bg-zinc-50 border-b border-zinc-200 uppercase tracking-wider text-zinc-500 font-mono text-[9px] font-bold">
+                          <tr>
+                            <th className="p-3.5">Reference ID</th>
+                            <th className="p-3.5">Recipient Profile</th>
+                            <th className="p-3.5">Total Bill</th>
+                            <th className="p-3.5">Payment</th>
+                            <th className="p-3.5">Purchase Order</th>
+                            <th className="p-3.5">Fulfillment Status</th>
+                            <th className="p-3.5">Date</th>
+                            <th className="p-3.5 text-right">Invoice / Actions</th>
                           </tr>
-                        ))}
-                      </tbody>
-                    </table>
+                        </thead>
+                        <tbody className="divide-y divide-zinc-100 bg-white">
+                          {orders.map((ord) => {
+                            const isDeleting = deletingOrderId === ord.id;
+                            return (
+                              <tr key={ord.id} className="hover:bg-zinc-50 transition-colors">
+                                <td className="p-3.5 font-mono text-zinc-900 font-bold">{ord.id}</td>
+                                <td className="p-3.5 font-sans text-xs">
+                                  <p className="text-zinc-950 font-bold leading-none mb-1">{ord.shipping.fullName}</p>
+                                  {ord.shipping.phone && (
+                                    <p className="text-[10px] text-yellow-600 font-mono font-black mb-1">📞 {ord.shipping.phone}</p>
+                                  )}
+                                  <p className="text-[10px] text-zinc-400 font-medium">{ord.shipping.city} ({ord.shipping.zipCode})</p>
+                                </td>
+                                <td className="p-3.5 font-mono text-zinc-900 text-xs font-black">
+                                  ₹{ord.total.toLocaleString("en-IN")}
+                                </td>
+                                <td className="p-3.5">
+                                  <select
+                                    value={ord.paymentStatus || "Unpaid"}
+                                    onChange={(e) => {
+                                      const val = e.target.value as "Unpaid" | "Paid";
+                                      const updated = orders.map((o) => (o.id === ord.id ? { ...o, paymentStatus: val } : o));
+                                      saveOrders(updated);
+                                      if (selectedOrder?.id === ord.id) setSelectedOrder({ ...selectedOrder, paymentStatus: val });
+                                      triggerToast(`Bill of ${ord.id} marked as ${val}!`, "success");
+                                    }}
+                                    className={`text-[11px] border px-2 py-1 focus:outline-none font-mono font-black rounded-sm ${
+                                      (ord.paymentStatus || "Unpaid") === "Paid"
+                                        ? "bg-green-50 text-green-700 border-green-200"
+                                        : "bg-red-50 text-red-700 border-red-200"
+                                    }`}
+                                  >
+                                    <option value="Unpaid" className="bg-white text-red-700 font-bold">❌ Unpaid</option>
+                                    <option value="Paid" className="bg-white text-green-700 font-bold">✅ Paid</option>
+                                  </select>
+                                  {ord.utr && (
+                                    <p className="text-[10px] text-zinc-500 font-mono mt-1.5 font-bold">
+                                      UTR: <span className="text-zinc-900 select-all font-mono font-bold bg-zinc-100 px-1 py-0.5">{ord.utr}</span>
+                                    </p>
+                                  )}
+                                </td>
+                                <td className="p-3.5 max-w-[180px] truncate text-zinc-700 font-medium" title={ord.items.map(i => i.product.name).join(", ")}>
+                                  {ord.items.map(i => `${i.product.name} (${i.quantity}x)`).join(", ")}
+                                </td>
+                                <td className="p-3.5">
+                                  <select
+                                    value={ord.status}
+                                    onChange={(e) => {
+                                      const val = e.target.value as "Processing" | "Shipped" | "Delivered";
+                                      const updated = orders.map((o) => (o.id === ord.id ? { ...o, status: val } : o));
+                                      saveOrders(updated);
+                                      if (selectedOrder?.id === ord.id) setSelectedOrder({ ...selectedOrder, status: val });
+                                      triggerToast(`Status of ${ord.id} changed to ${val}!`, "success");
+                                    }}
+                                    className="bg-white text-xs border border-zinc-200 px-2 py-1.5 focus:border-yellow-500 focus:outline-none text-zinc-900 font-mono font-black rounded-sm w-full"
+                                  >
+                                    <option value="Processing" className="bg-white text-yellow-750 font-bold">Processing 📦</option>
+                                    <option value="Shipped" className="bg-white text-blue-750 font-bold">Shipped 🚚</option>
+                                    <option value="Delivered" className="bg-white text-green-750 font-bold">Delivered ✅</option>
+                                  </select>
+
+                                  {/* ST Courier Tracking ID Input */}
+                                  <div className="mt-2 flex items-center gap-1.5">
+                                    <input
+                                      type="text"
+                                      placeholder="ST Courier ID (e.g. ST940381)"
+                                      defaultValue={ord.stCourierId || ""}
+                                      onBlur={(e) => {
+                                        const val = e.target.value.trim();
+                                        const updated = orders.map((o) => (o.id === ord.id ? { ...o, stCourierId: val } : o));
+                                        saveOrders(updated);
+                                        if (selectedOrder?.id === ord.id) setSelectedOrder({ ...selectedOrder, stCourierId: val });
+                                        if (val) triggerToast(`ST Courier ID saved as ${val} for ${ord.id}!`, "success");
+                                      }}
+                                      className="bg-zinc-50 border border-zinc-200 hover:border-zinc-300 focus:border-yellow-500 rounded-sm px-1.5 py-1 text-[10px] font-mono font-bold text-zinc-900 focus:outline-none w-full"
+                                    />
+                                  </div>
+                                </td>
+                                <td className="p-3.5 text-zinc-400 font-mono text-[10px] whitespace-nowrap font-bold">{ord.date.split(" at ")[0]}</td>
+                                <td className="p-3.5">
+                                  <div className="flex items-center justify-end gap-2 text-right">
+                                    <button
+                                      type="button"
+                                      onClick={() => setPrintingOrder(ord)}
+                                      className="p-1.5 bg-white hover:bg-yellow-400 hover:text-gray-950 border border-zinc-200 rounded-sm text-zinc-700 transition-all cursor-pointer flex items-center gap-1.5 text-[10px] font-mono font-bold shadow-xs"
+                                      title="Print Premium PDF Receipt Invoice"
+                                    >
+                                      <FileText className="w-3.5 h-3.5" />
+                                      <span>PDF</span>
+                                    </button>
+
+                                    <button
+                                      type="button"
+                                      onClick={() => {
+                                        if ((ord.paymentStatus || "Unpaid") !== "Paid") {
+                                          triggerToast("Mark order as PAID first to unlock receipt delivery!", "info");
+                                          return;
+                                        }
+                                        let cleanPhone = ord.shipping.phone?.replace(/\D/g, "") || "9585969334";
+                                        if (cleanPhone.length === 10) cleanPhone = "91" + cleanPhone;
+                                        else if (cleanPhone.startsWith("0")) cleanPhone = "91" + cleanPhone.substring(1);
+                                        const itemsText = ord.items.map(item => `◽ *${item.product.name}* (${item.quantity}x) - ₹${item.product.price.toLocaleString("en-IN")}`).join("\n");
+                                        const whatsappMsg = `*MADURAI GADGETS 58 - OFFICIAL DIGITAL RECEIPT* 📜\n...\n💰 *GRAND TOTAL:* ₹${ord.total.toLocaleString("en-IN")}`;
+                                        window.open(`https://wa.me/${cleanPhone}?text=${encodeURIComponent(whatsappMsg)}`, "_blank", "noopener,noreferrer");
+                                      }}
+                                      className={`p-1.5 border rounded-sm transition-all cursor-pointer flex items-center gap-1.5 text-[10px] font-mono font-bold shadow-xs ${
+                                        (ord.paymentStatus || "Unpaid") === "Paid"
+                                          ? "bg-yellow-50 border-yellow-300 text-yellow-800 hover:bg-yellow-400 hover:text-gray-950"
+                                          : "bg-zinc-150 border-zinc-200 text-zinc-400 cursor-not-allowed opacity-50"
+                                      }`}
+                                    >
+                                      {ord.paymentStatus === "Paid" ? <Send className="w-3.5 h-3.5 text-yellow-750" /> : <Lock className="w-3.5 h-3.5 text-zinc-400" />}
+                                      <span>Send</span>
+                                    </button>
+
+                                    <button
+                                      type="button"
+                                      onClick={() => {
+                                        if (!isDeleting) {
+                                          setDeletingOrderId(ord.id);
+                                        } else {
+                                          const filtered = orders.filter(o => o.id !== ord.id);
+                                          saveOrders(filtered);
+                                          if (selectedOrder?.id === ord.id) setSelectedOrder(filtered[0] || null);
+                                          setDeletingOrderId(null);
+                                          triggerToast(`Deleted ${ord.id} file!`, "info");
+                                        }
+                                      }}
+                                      className={`p-1.5 border rounded-sm transition-all cursor-pointer flex items-center gap-1.5 text-[10px] font-mono font-bold shadow-xs ${
+                                        isDeleting
+                                          ? "bg-red-650 text-white border-red-750 hover:bg-red-750 animate-pulse"
+                                          : "bg-white hover:bg-red-50 text-red-650 border-zinc-200 hover:border-red-300"
+                                      }`}
+                                      title="Delete order ticket"
+                                    >
+                                      <Trash2 className="w-3.5 h-3.5" />
+                                      {isDeleting && <span>Sure?</span>}
+                                    </button>
+                                  </div>
+                                </td>
+                              </tr>
+                            );
+                          })}
+                        </tbody>
+                      </table>
+                    </div>
                   </div>
                 )}
               </div>
@@ -4479,10 +4793,108 @@ Your premium watch package is certified and ready for dispatch. Thank you for sh
                         </div>
                       </div>
 
-                      {/* Custom note explaining WhatsApp QR Code flow */}
-                      <div className="p-3 bg-emerald-50 border border-emerald-200 rounded-none text-[10px] text-emerald-700 font-mono leading-relaxed mt-4">
-                        💡 *Machan Note:* We do not collect credit cards online. Clicking below registers your order details and opens WhatsApp directly to request our *official GPay/PhonePe payment QR code* for secure transfer!
+                      {/* Payment Method Selector */}
+                      <div className="pt-6 border-t border-zinc-200 space-y-3 font-light">
+                        <p className="font-mono text-[9px] font-bold tracking-[0.25em] text-zinc-500 uppercase">Select Payment Method</p>
+                        <div className="grid grid-cols-2 gap-2">
+                          <button
+                            type="button"
+                            onClick={() => setPaymentMethod("whatsapp")}
+                            className={`py-3 px-4 text-[10px] font-mono font-bold uppercase tracking-wider transition-all border flex flex-col items-center justify-center gap-1.5 cursor-pointer ${
+                              paymentMethod === "whatsapp"
+                                ? "bg-zinc-950 text-white border-zinc-950 shadow-md"
+                                : "bg-zinc-50 text-zinc-650 border-zinc-200 hover:bg-zinc-100"
+                            }`}
+                          >
+                            <MessageCircle className="w-4 h-4 shrink-0" />
+                            <span>WhatsApp QR</span>
+                          </button>
+                          
+                          <button
+                            type="button"
+                            onClick={() => setPaymentMethod("upi")}
+                            className={`py-3 px-4 text-[10px] font-mono font-bold uppercase tracking-wider transition-all border flex flex-col items-center justify-center gap-1.5 cursor-pointer ${
+                              paymentMethod === "upi"
+                                ? "bg-zinc-950 text-white border-zinc-950 shadow-md"
+                                : "bg-zinc-50 text-zinc-650 border-zinc-200 hover:bg-zinc-100"
+                            }`}
+                          >
+                            <Sparkles className="w-4 h-4 text-amber-500 shrink-0" />
+                            <span>UPI Direct Pay</span>
+                          </button>
+                        </div>
                       </div>
+
+                      {/* Payment Content Panels */}
+                      {paymentMethod === "whatsapp" ? (
+                        <div className="p-3 bg-emerald-50 border border-emerald-200 rounded-none text-[10px] text-emerald-700 font-mono leading-relaxed mt-4">
+                          💡 *Machan Note:* We do not collect credit cards online. Clicking below registers your order details and opens WhatsApp directly to request our *official GPay/PhonePe payment QR code* (linked number: **9688616838**, UPI ID: **dineshdev5227-2@okhdfcbank**) for secure transfer!
+                        </div>
+                      ) : (
+                        <div className="p-4 bg-zinc-50 border border-zinc-250 rounded-none space-y-4 mt-4">
+                          <div className="text-center space-y-2">
+                            <p className="text-[10px] font-mono font-bold tracking-wider text-zinc-500 uppercase">Scan to Pay via UPI</p>
+                            <div className="space-y-3">
+                              <a
+                                href={`upi://pay?pa=dineshdev5227-2@okhdfcbank&pn=Dinesh%20DV`}
+                                className="inline-block p-2 bg-white border border-zinc-200 shadow-xs hover:border-yellow-500 hover:ring-1 hover:ring-yellow-500 transition-all rounded-sm"
+                                title="Click to Pay directly via App (GPay/PhonePe)"
+                              >
+                                <img
+                                  src={`https://api.qrserver.com/v1/create-qr-code/?size=180x180&data=${encodeURIComponent(
+                                    `upi://pay?pa=dineshdev5227-2@okhdfcbank&pn=Dinesh%20DV`
+                                  )}`}
+                                  alt="UPI Payment QR Code"
+                                  className="w-44 h-44 object-contain mx-auto"
+                                />
+                              </a>
+                              
+                              <div>
+                                <a
+                                  href={`upi://pay?pa=dineshdev5227-2@okhdfcbank&pn=Dinesh%20DV`}
+                                  className="inline-flex items-center justify-center gap-1.5 px-4 py-2 bg-yellow-450 hover:bg-yellow-500 text-gray-950 font-black uppercase text-[10px] tracking-wider rounded-sm text-center shadow-xs transition-all w-44 mx-auto font-mono active:scale-95 duration-200"
+                                >
+                                  ⚡ Pay Directly via App
+                                </a>
+                              </div>
+                            </div>
+                            <p className="text-xs font-sans text-zinc-800 font-medium">
+                              Total Amount: <span className="font-mono font-bold text-zinc-900">₹{cartTotal.toLocaleString("en-IN")}</span>
+                            </p>
+                          </div>
+
+                          <div className="space-y-2.5 border-t border-zinc-200 pt-3">
+                            <p className="text-[10px] font-mono text-zinc-500 leading-relaxed">
+                              👉 Scan the QR using GPay, PhonePe, Paytm, or BHIM. Or transfer directly to UPI ID: <strong className="text-zinc-950 font-bold select-all">dineshdev5227-2@okhdfcbank</strong> or Number: <strong className="text-zinc-950 font-bold select-all">9688616838</strong>.
+                              <br />
+                              <span className="text-amber-600 font-bold">⚠️ Note: Enter the amount manually inside GPay/PhonePe to complete the transfer!</span>
+                            </p>
+                            <div className="p-2.5 bg-white border border-zinc-200 rounded-sm text-[10px] space-y-1 text-zinc-650 font-mono">
+                              <p className="font-bold text-zinc-800">🏦 Bank Transfer Details:</p>
+                              <p>Bank: <strong>HDFC BANK</strong></p>
+                              <p>Account Number: <strong className="select-all text-zinc-950">50100483327828</strong></p>
+                            </div>
+                            
+                            <div className="space-y-1">
+                              <label htmlFor="utr-input" className="block font-mono text-[9px] font-bold text-zinc-500 uppercase">
+                                Enter 12-Digit UPI UTR / Transaction ID *
+                              </label>
+                              <input
+                                id="utr-input"
+                                type="text"
+                                required={paymentMethod === "upi"}
+                                pattern="[0-9]{12}"
+                                title="Transaction ID / UTR must be exactly 12 digits"
+                                maxLength={12}
+                                placeholder="e.g. 340912785634"
+                                value={utrNumber}
+                                onChange={(e) => setUtrNumber(e.target.value.replace(/\D/g, ""))}
+                                className="w-full px-4 py-2.5 bg-white border border-zinc-200 rounded-none text-xs font-mono text-zinc-900 placeholder-zinc-400 focus:outline-none focus:ring-1 focus:ring-yellow-500/30 focus:border-yellow-500"
+                              />
+                            </div>
+                          </div>
+                        </div>
+                      )}
 
                       <button
                         type="submit"
@@ -4496,7 +4908,7 @@ Your premium watch package is certified and ready for dispatch. Thank you for sh
                           </>
                         ) : (
                           <>
-                            Checkout on WhatsApp (Get Payment QR) 💬
+                            {paymentMethod === "upi" ? "Pay & Submit on WhatsApp 💬" : "Checkout on WhatsApp (Get Payment QR) 💬"}
                             <ArrowRight className="w-3.5 h-3.5 text-white" />
                           </>
                         )}
@@ -4594,138 +5006,183 @@ Your premium watch package is certified and ready for dispatch. Thank you for sh
               exit={{ opacity: 0, scale: 0.95 }}
               className="max-w-xl w-full my-8 text-gray-900"
             >
-              <div id="printable-invoice-card" className="bg-white border-2 border-yellow-500/20 p-8 text-gray-900 relative shadow-2xl space-y-6">
+              <div id="printable-invoice-card" className="bg-white border-l-[16px] border-amber-500 p-8 text-zinc-900 relative shadow-2xl space-y-6 flex flex-col justify-between font-sans">
                 
                 {/* Header brand details */}
-                <div className="flex flex-col sm:flex-row justify-between items-start gap-4 border-b border-gray-200 pb-6">
+                <div className="bg-zinc-950 p-6 text-white flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 relative">
                   <div>
-                    <h2 className="text-xl font-display font-black tracking-widest text-gray-900 leading-none uppercase">
-                      MADURAI GADGETS <span className="text-yellow-500 font-extrabold">58</span>
+                    <h2 className="text-xl font-display font-black tracking-widest text-white leading-none uppercase">
+                      MADURAI GADGETS <span className="text-amber-500 font-extrabold">58</span>
                     </h2>
-                    <p className="text-[10px] text-yellow-600 font-mono uppercase tracking-[0.15em] font-bold mt-1">
-                      Wear Peak, Master Your Style 🏛️
+                    <p className="text-[9px] text-zinc-400 font-mono uppercase tracking-[0.2em] mt-1.5">
+                      OFFICIAL RETAIL WATCH PASS &amp; ORDER PERMIT
                     </p>
-                    <p className="text-[9px] text-gray-500 font-mono mt-2 leading-relaxed">
-                      Showroom: Vakkil New Street, Simmakkal, Madurai, TN - 625001<br />
-                      Support Phone: +91 95859 69334
+                    <p className="text-[8px] text-zinc-500 font-sans mt-2.5 leading-relaxed">
+                      Simmakkal Outlet &bull; Premium Replica Timepieces &bull; A+ Certified Grade-A
                     </p>
                   </div>
                   
-                  <div className="text-right sm:text-right font-mono self-stretch flex flex-col justify-between items-end">
-                    <span className="px-3 py-1.5 bg-yellow-500/10 border border-yellow-500/30 text-xs font-bold uppercase tracking-wider text-yellow-600">
-                      OFFICIAL INVOICE
+                  <div className="text-right font-mono flex flex-col items-end gap-1.5 self-stretch sm:self-auto justify-between">
+                    <span className="text-[10px] text-amber-500 font-bold uppercase tracking-widest">
+                      ID: {printingOrder.id}
                     </span>
-                    <div className="text-[10px] text-gray-500 mt-2 space-y-0.5 text-right">
-                      <p>Ref ID: <span className="text-gray-900 font-bold">{printingOrder.id}</span></p>
-                      <p>Date of Purchase: <span className="text-gray-900 font-semibold">{printingOrder.date.includes(" at ") ? printingOrder.date.split(" at ")[0] : printingOrder.date.split(",")[0]}</span></p>
-                      <p>Time of Purchase: <span className="text-gray-900 font-semibold">{printingOrder.date.includes(" at ") ? printingOrder.date.split(" at ")[1] : (printingOrder.date.split(",")[1] || "12:00:00 PM")}</span></p>
+                    <span className="text-[7px] text-zinc-500 mt-1 uppercase tracking-wider block">
+                      SECURE BILLING TICKET
+                    </span>
+                  </div>
+                </div>
+
+                {/* Details Section */}
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-6 pt-2 font-sans">
+                  {/* Left Column: Customer details */}
+                  <div className="space-y-3">
+                    <h4 className="font-mono text-[9px] font-black tracking-[0.15em] text-zinc-400 uppercase border-b border-zinc-200 pb-1">CUSTOMER DETAILS</h4>
+                    <div className="space-y-1 text-xs">
+                      <p className="text-zinc-500">Name: <strong className="text-zinc-900 font-bold">{printingOrder.shipping.fullName}</strong></p>
+                      <p className="text-zinc-500">Contact Phone: <strong className="text-zinc-900 font-semibold">{printingOrder.shipping.phone}</strong></p>
+                      <p className="text-zinc-500">Contact Email: <strong className="text-zinc-900 font-medium">{printingOrder.shipping.email}</strong></p>
+                      <p className="text-zinc-500">Delivery Address: <strong className="text-zinc-900 font-medium font-sans">{printingOrder.shipping.address}, {printingOrder.shipping.city} - {printingOrder.shipping.zipCode}</strong></p>
+                    </div>
+                  </div>
+
+                  {/* Right Column: Schedule / Order info */}
+                  <div className="space-y-3">
+                    <h4 className="font-mono text-[9px] font-black tracking-[0.15em] text-zinc-400 uppercase border-b border-zinc-200 pb-1">ORDER &amp; SHIPPING INFO</h4>
+                    <div className="space-y-1 text-xs">
+                      <p className="text-zinc-500">Outlet Location: <strong className="text-amber-600 font-bold">Simmakkal Showroom (Madurai)</strong></p>
+                      <p className="text-zinc-500">Purchase Date: <strong className="text-zinc-900 font-semibold">{printingOrder.date.includes(" at ") ? printingOrder.date.split(" at ")[0] : printingOrder.date.split(",")[0]}</strong></p>
+                      <p className="text-zinc-500">Purchase Time: <strong className="text-zinc-900 font-semibold">{printingOrder.date.includes(" at ") ? printingOrder.date.split(" at ")[1] : (printingOrder.date.split(",")[1] || "12:00 PM")}</strong></p>
+                      <p className="text-zinc-500">Fulfillment Status: <strong className="text-zinc-900 font-semibold">{printingOrder.status} (Verified)</strong></p>
                     </div>
                   </div>
                 </div>
 
-                {/* Billing Customer profiling info */}
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-6 p-4.5 bg-gray-50 border border-gray-200 font-sans">
-                  <div className="space-y-1.5">
-                    <p className="font-mono text-[9px] font-bold tracking-[0.2em] text-yellow-600 uppercase">Customer Profile</p>
-                    <h3 className="text-sm font-semibold text-gray-900 leading-none">{printingOrder.shipping.fullName}</h3>
-                    {printingOrder.shipping.phone && (
-                      <p className="text-[11px] font-mono text-yellow-600">📲 {printingOrder.shipping.phone}</p>
-                    )}
-                    <p className="text-[11px] text-gray-500 leading-tight">
-                      {printingOrder.shipping.email}
-                    </p>
-                  </div>
-                  <div className="space-y-1.5">
-                    <p className="font-mono text-[9px] font-bold tracking-[0.2em] text-gray-400 uppercase">Shipping Address</p>
-                    <p className="text-[11px] text-gray-700 leading-relaxed font-light font-sans">
-                      {printingOrder.shipping.address},<br />
-                      {printingOrder.shipping.city} - {printingOrder.shipping.zipCode}
-                    </p>
-                  </div>
-                </div>
-
-                {/* Items listings receipt list */}
-                <div className="space-y-2 font-mono">
-                  <p className="text-[9px] font-bold tracking-[0.2em] text-gray-400 uppercase mb-2">Detailed Purchase Inventory</p>
+                {/* Billing Table */}
+                <div className="space-y-2 pt-2">
+                  <h4 className="font-mono text-[9px] font-black tracking-[0.15em] text-zinc-400 uppercase">BILLING DETAILS &amp; FEE COMPILATION</h4>
                   
-                  <table className="w-full text-xs text-left">
-                    <thead className="bg-gray-100 text-gray-600 text-[10px] uppercase border-b border-gray-200">
-                      <tr>
-                        <th className="py-2.5 px-3">Item Specification</th>
-                        <th className="py-2.5 px-3 text-center">Qty</th>
-                        <th className="py-2.5 px-3 text-right">Unit Price</th>
-                        <th className="py-2.5 px-3 text-right">Total</th>
+                  <table className="w-full text-xs text-left border-collapse">
+                    <thead>
+                      <tr className="bg-zinc-100 text-zinc-650 text-[9px] font-mono uppercase tracking-wider border-b border-zinc-200">
+                        <th className="py-2 px-3">Charge Description</th>
+                        <th className="py-2 px-3 text-right">Pricing (INR)</th>
                       </tr>
                     </thead>
-                    <tbody className="divide-y divide-gray-200">
+                    <tbody className="divide-y divide-zinc-200 font-sans text-xs">
                       {printingOrder.items.map((item, idx) => (
-                        <tr key={idx} className="text-gray-800">
-                          <td className="py-3 px-3 font-sans text-[11px]">
-                            <span className="font-bold block text-gray-900">{item.product.name}</span>
-                            <span className="text-[9px] text-gray-500 font-mono uppercase tracking-wider">{item.product.category}</span>
+                        <tr key={idx} className="text-zinc-800">
+                          <td className="py-3 px-3">
+                            <strong className="text-zinc-900 block font-bold">{item.product.name} (x{item.quantity})</strong>
+                            <span className="text-[9px] text-zinc-500 block font-mono">{item.product.category} &bull; Premium Quality Mastercopy</span>
                           </td>
-                          <td className="py-3 px-3 text-center text-[11px] font-semibold text-gray-900">{item.quantity}</td>
-                          <td className="py-3 px-3 text-right text-[11px]">₹{item.product.price.toLocaleString("en-IN")}</td>
-                          <td className="py-3 px-3 text-right text-[11px] font-semibold text-gray-900">₹{(item.product.price * item.quantity).toLocaleString("en-IN")}</td>
+                          <td className="py-3 px-3 text-right font-semibold text-zinc-900 font-mono">
+                            INR {Math.round(item.product.price * item.quantity).toLocaleString("en-IN")}
+                          </td>
                         </tr>
                       ))}
+                      {/* Subtotal before tax */}
+                      <tr className="text-zinc-500 text-[11px] font-mono">
+                        <td className="py-2 px-3">Subtotal (Excl. Tax)</td>
+                        <td className="py-2 px-3 text-right">
+                          INR {Math.round(printingOrder.total / 1.08 + (printingOrder.discount || 0)).toLocaleString("en-IN")}
+                        </td>
+                      </tr>
+                      {printingOrder.discount > 0 && (
+                        <tr className="text-emerald-600 text-[11px] font-mono font-bold">
+                          <td className="py-2 px-3">Promo discount code:</td>
+                          <td className="py-2 px-3 text-right">
+                            -INR {printingOrder.discount.toLocaleString("en-IN")}
+                          </td>
+                        </tr>
+                      )}
+                      <tr className="text-zinc-500 text-[11px] font-mono">
+                        <td className="py-2 px-3">SGST &amp; CGST surcharge (8%):</td>
+                        <td className="py-2 px-3 text-right">
+                          INR {Math.round(printingOrder.total - (printingOrder.total / 1.08)).toLocaleString("en-IN")}
+                        </td>
+                      </tr>
                     </tbody>
                   </table>
                 </div>
 
-                {/* Grand values block */}
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4 pt-4 border-t border-gray-250 font-mono text-xs">
-                  {/* Stamp status visualization */}
-                  <div className="flex flex-col justify-center items-start">
-                    {(printingOrder.paymentStatus || "Unpaid") === "Paid" ? (
-                      <div className="px-5 py-3 border border-emerald-500/50 bg-emerald-50 text-emerald-700 flex flex-col items-center justify-center rounded-none shadow-sm select-none uppercase tracking-[0.1em] text-center w-full">
-                        <span className="text-xs font-black flex items-center gap-1">
-                          <Check className="w-4 h-4 text-emerald-600 shrink-0" />
-                          PAID &amp; APPROVED
-                        </span>
-                        <span className="text-[8px] font-semibold text-emerald-600 mt-1">✓ TRANSIT READY</span>
-                      </div>
-                    ) : (
-                      <div className="px-5 py-3 border border-rose-500/50 bg-rose-50 text-rose-700 flex flex-col items-center justify-center rounded-none shadow-sm select-none uppercase tracking-[0.1em] text-center w-full">
-                        <span className="text-xs font-black flex items-center gap-1">
-                          <Clock className="w-4 h-4 text-rose-600 shrink-0" />
-                          UNPAID BILL
-                        </span>
-                        <span className="text-[8px] font-semibold text-rose-600 mt-1">☠ WAITING TO COMPLETE</span>
-                      </div>
-                    )}
-                    <p className="text-[9px] text-gray-500 mt-2 text-center md:text-left self-stretch">
-                      Shipping: <span className="text-gray-900 font-semibold">FREE COMPLIMENTARY SECURE DELIVERY 📦</span><br />
-                      Fulfillment Code: <span className="text-gray-750 font-bold uppercase">{printingOrder.status}</span>
-                    </p>
+                {/* Total Paid block */}
+                <div className="bg-amber-600 p-4 text-white flex justify-between items-center select-none tracking-wide">
+                  <span className="text-xs font-black font-sans uppercase">TOTAL PAID AMOUNT IN FULL</span>
+                  <span className="text-sm font-bold font-mono">INR {Math.round(printingOrder.total).toLocaleString("en-IN")}</span>
+                </div>
+
+                {/* Barcode & Stamp Row */}
+                <div className="flex flex-col sm:flex-row justify-between items-center gap-6 pt-2">
+                  {/* Gate pass security barcode */}
+                  <div className="space-y-1">
+                    <p className="font-mono text-[8px] font-black tracking-wider text-zinc-400 uppercase">GATE-PASS SECURITY BARCODE</p>
+                    <div className="flex flex-col items-start gap-1">
+                      <svg className="w-60 h-10 text-zinc-900 fill-current" viewBox="0 0 100 20" preserveAspectRatio="none">
+                        <rect x="0" y="0" width="2" height="20" />
+                        <rect x="3" y="0" width="1" height="20" />
+                        <rect x="5" y="0" width="3" height="20" />
+                        <rect x="10" y="0" width="1" height="20" />
+                        <rect x="12" y="0" width="2" height="20" />
+                        <rect x="15" y="0" width="1" height="20" />
+                        <rect x="18" y="0" width="3" height="20" />
+                        <rect x="22" y="0" width="2" height="20" />
+                        <rect x="25" y="0" width="1" height="20" />
+                        <rect x="28" y="0" width="4" height="20" />
+                        <rect x="33" y="0" width="1" height="20" />
+                        <rect x="35" y="0" width="2" height="20" />
+                        <rect x="38" y="0" width="1" height="20" />
+                        <rect x="41" y="0" width="3" height="20" />
+                        <rect x="45" y="0" width="1" height="20" />
+                        <rect x="47" y="0" width="2" height="20" />
+                        <rect x="51" y="0" width="3" height="20" />
+                        <rect x="55" y="0" width="1" height="20" />
+                        <rect x="58" y="0" width="4" height="20" />
+                        <rect x="63" y="0" width="2" height="20" />
+                        <rect x="66" y="0" width="1" height="20" />
+                        <rect x="69" y="0" width="3" height="20" />
+                        <rect x="73" y="0" width="1" height="20" />
+                        <rect x="76" y="0" width="2" height="20" />
+                        <rect x="80" y="0" width="3" height="20" />
+                        <rect x="84" y="0" width="1" height="20" />
+                        <rect x="87" y="0" width="4" height="20" />
+                        <rect x="92" y="0" width="2" height="20" />
+                        <rect x="95" y="0" width="1" height="20" />
+                        <rect x="98" y="0" width="2" height="20" />
+                      </svg>
+                      <span className="text-[7px] font-mono tracking-widest text-zinc-500">*{printingOrder.id}-VERIFIED*</span>
+                    </div>
                   </div>
 
-                  {/* Calculations invoice */}
-                  <div className="space-y-2.5 text-right font-light text-gray-500 self-center">
-                    <div className="flex justify-between">
-                      <span>Item Subtotal:</span>
-                      <span className="text-gray-900 font-medium">₹{Math.round(printingOrder.total / 1.08 + (printingOrder.discount || 0)).toLocaleString("en-IN")}</span>
-                    </div>
-                    {printingOrder.discount > 0 && (
-                      <div className="flex justify-between text-emerald-650 font-bold">
-                        <span>Promo discount code:</span>
-                        <span>-₹{printingOrder.discount.toLocaleString("en-IN")}</span>
+                  {/* Stamp status */}
+                  <div>
+                    {(printingOrder.paymentStatus || "Unpaid") === "Paid" ? (
+                      <div className="border-2 border-emerald-500 p-2.5 text-center rounded-xs select-none min-w-44 bg-emerald-50/50">
+                        <span className="text-[11px] font-black text-emerald-600 block tracking-wider">RESERVED &amp; PAID</span>
+                        <span className="text-[6px] font-bold text-emerald-500 block mt-0.5 tracking-wider">VERIFIED VIA FIRESTORE</span>
+                      </div>
+                    ) : (
+                      <div className="border-2 border-rose-500 p-2.5 text-center rounded-xs select-none min-w-44 bg-rose-50/50">
+                        <span className="text-[11px] font-black text-rose-600 block tracking-wider">UNPAID &amp; PENDING</span>
+                        <span className="text-[6px] font-bold text-rose-500 block mt-0.5 tracking-wider">WAITING TO RECEIVE</span>
                       </div>
                     )}
-                    <div className="flex justify-between">
-                      <span>SGST &amp; CGST (8% surcharge):</span>
-                      <span className="text-gray-900 font-medium">₹{Math.round(printingOrder.total - printingOrder.total / 1.08).toLocaleString("en-IN")}</span>
-                    </div>
-                    <div className="flex justify-between text-gray-900 font-semibold text-sm pt-2.5 border-t border-gray-200 leading-none">
-                      <span>Grand Payment Received:</span>
-                      <span className="text-yellow-600 font-bold font-mono text-base">₹{printingOrder.total.toLocaleString("en-IN")}</span>
-                    </div>
                   </div>
                 </div>
 
-                <div className="text-[9px] text-gray-400 border-t border-dashed border-gray-200 pt-4 text-center leading-relaxed">
-                  Thank you for shopping with Madurai Gadgets 58. Any warranty returns request this slip in official hand.<br />
-                  Certified authentic replica grade-A mastercopies. "WEAR PEAK, MASTER YOUR STYLE"
+                {/* Store Regulations Code of Conduct */}
+                <div className="bg-zinc-50 border border-zinc-200 p-4 font-sans text-[10px] text-zinc-500 space-y-2.5">
+                  <h5 className="font-mono font-black tracking-wider text-zinc-800 uppercase leading-none m-0">STORE REGULATIONS &amp; TERMS OF CONDUCT</h5>
+                  <ol className="list-decimal list-inside space-y-1 font-light leading-normal pl-0.5 m-0">
+                    <li>All products are Grade-A premium copy timepieces featuring Japanese sweeping quartz/automatic movements.</li>
+                    <li>Secure delivery is complimentary. Registered order details are instantly synced to our tracking ledger.</li>
+                    <li>For warranty claims or returns, customers must present this generated invoice ticket to our support channels.</li>
+                    <li>Order status inquiries, cancellations or custom updates can be verified directly via our WhatsApp portal.</li>
+                  </ol>
+                </div>
+
+                <div className="text-[9px] text-zinc-400 text-center leading-relaxed">
+                  This is an electronically compiled validation slip. No signature is legally required.<br />
+                  Thank you for shopping at Madurai Gadgets 58! "WEAR PEAK, MASTER YOUR STYLE"
                 </div>
 
                 {/* Operations Utility action panel button block */}

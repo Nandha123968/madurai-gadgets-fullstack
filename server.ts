@@ -7,6 +7,13 @@ import { createServer as createViteServer } from "vite";
 import cors from "cors";
 import bcrypt from "bcryptjs";
 import jwt from "jsonwebtoken";
+import nodemailer from "nodemailer";
+
+// ==========================================
+// NEW: SECURITY PACKAGES 🛡️
+// ==========================================
+import helmet from "helmet";
+import { rateLimit } from "express-rate-limit";
 
 const JWT_SECRET = process.env.JWT_SECRET || "madurai_gadgets_super_secret";
 
@@ -16,188 +23,224 @@ dotenv.config();
 const app = express();
 const PORT = 3000;
 
+// ==========================================
+// HIGH SECURITY & SHIELD CONFIGURATION 🛡️
+// ==========================================
+
+// 1. Helmet: HTTP headers-ah hide panni XSS, Clickjacking mathiri attacks-ah thadukkum.
+app.use(helmet({
+  contentSecurityPolicy: false
+})); 
+
 app.use(cors());
-app.use(express.json());
+
+// 2. Payload Limit: Hacker periya data anuppi server-ah crash pannaama irukka limit (10kb) set panrom.
+app.use(express.json({ limit: '10kb' })); 
+
+// 3. Rate Limiter: DDoS & Spam Bot Protection. 
+// Oru IP-la irunthu 15 nimishathukku 100 API requests thaan panna mudiyum.
+const apiLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000, // 15 Minutes window
+  limit: 100, 
+  message: { 
+    success: false, 
+    message: "Too many requests from this IP, machan! Server shield activated. Try again after 15 minutes. 🛑" 
+  },
+  standardHeaders: 'draft-7',
+  legacyHeaders: false,
+});
+
+// Intha shield-ah namma API routes ellathukkum apply panrom
+app.use("/api/", apiLimiter);
+
 
 // ==========================================
 // MySQL Database Connection (Aiven MySQL)
 // ==========================================
-let db: mysql.Connection | null = null;
+let db: any = null; // Changed to 'any' to avoid TypeScript errors with Pool
 
 if (process.env.DB_HOST) {
-  try {
-    db = mysql.createConnection({
-      host: process.env.DB_HOST,
-      user: process.env.DB_USER,
-      password: process.env.DB_PASSWORD,
-      database: process.env.DB_NAME,
-      port: process.env.DB_PORT ? Number(process.env.DB_PORT) : 3306,
-      ssl: { rejectUnauthorized: false }
-    });
+    try {
+        db = mysql.createPool({
+            host: process.env.DB_HOST,
+            user: process.env.DB_USER,
+            password: process.env.DB_PASSWORD,
+            database: process.env.DB_NAME,
+            port: process.env.DB_PORT ? Number(process.env.DB_PORT) : 3306,
+            ssl: { rejectUnauthorized: false },
+            waitForConnections: true,
+            connectionLimit: 10,
+            queueLimit: 0
+        });
 
-    db.connect((err) => {
-      if (err) {
-        console.error("MySQL Database connection error ❌: ", err);
+        db.getConnection((err: any, connection: any) => {
+            if (err) {
+                console.error("MySQL Pool connection error ❌: ", err);
+            } else {
+                console.log("MySQL Database Pool Connected Successfully! 🔥");
+                connection.release();
+            }
+        });
+    } catch (e) {
+        console.error("Failed to initialize MySQL Connection", e);
         db = null;
-      } else {
-        console.log("MySQL Database Connected Successfully! 🔥");
-        
-        // Automatic-ah Products Table Create Panna Code
-        const createTableQuery = `
-          CREATE TABLE IF NOT EXISTS products (
+    }
+} else {
+    console.log("No MySQL connection environment variables found. Using default products.");
+}
+
+// ==========================================
+// Automatic-ah Database Tables Create Panna Code
+// ==========================================
+if (db) {
+    const createTableQuery = `
+        CREATE TABLE IF NOT EXISTS products (
             id INT AUTO_INCREMENT PRIMARY KEY,
             name VARCHAR(255) NOT NULL,
             price DECIMAL(10, 2) NOT NULL,
             description TEXT,
             image_url VARCHAR(500) NOT NULL,
             created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-          )
-        `;
-        db!.query(createTableQuery, (err, result) => {
-          if (err) {
+        )
+    `;
+    
+    db.query(createTableQuery, (err: any, result: any) => {
+        if (err) {
             console.error("Table create aagala ❌:", err);
-          } else {
+        } else {
             console.log("Products Table Ready aagiduchu! 📦");
 
-            // Safely check and add columns category, stock, specs, gender, brand if they don't exist
+            // Safely check and add columns
             const columnsToCheck = [
-              { name: "category", query: "ALTER TABLE products ADD COLUMN category VARCHAR(255) DEFAULT 'Premier Watches'" },
-              { name: "stock", query: "ALTER TABLE products ADD COLUMN stock INT DEFAULT 15" },
-              { name: "specs", query: "ALTER TABLE products ADD COLUMN specs TEXT NULL" },
-              { name: "gender", query: "ALTER TABLE products ADD COLUMN gender VARCHAR(50) DEFAULT 'Unisex'" },
-              { name: "brand", query: "ALTER TABLE products ADD COLUMN brand VARCHAR(255) DEFAULT 'Other'" }
+                { name: "category", query: "ALTER TABLE products ADD COLUMN category VARCHAR(255) DEFAULT 'Premier Watches'" },
+                { name: "stock", query: "ALTER TABLE products ADD COLUMN stock INT DEFAULT 15" },
+                { name: "specs", query: "ALTER TABLE products ADD COLUMN specs TEXT NULL" },
+                { name: "gender", query: "ALTER TABLE products ADD COLUMN gender VARCHAR(50) DEFAULT 'Unisex'" },
+                { name: "brand", query: "ALTER TABLE products ADD COLUMN brand VARCHAR(255) DEFAULT 'Other'" }
             ];
             
             columnsToCheck.forEach((col) => {
-              db!.query(`SHOW COLUMNS FROM products LIKE ?`, [col.name], (errCol, rows: any) => {
-                if (!errCol && rows && rows.length === 0) {
-                  db!.query(col.query, (errAlter) => {
-                    if (errAlter) {
-                      console.error(`Error adding column ${col.name}:`, errAlter);
-                    } else {
-                      console.log(`Column ${col.name} added successfully to products table!`);
+                db.query(`SHOW COLUMNS FROM products LIKE ?`, [col.name], (errCol: any, rows: any) => {
+                    if (!errCol && rows && rows.length === 0) {
+                        db.query(col.query, (errAlter: any) => {
+                            if (errAlter) console.error(`Error adding column ${col.name}:`, errAlter);
+                            else console.log(`Column ${col.name} added successfully to products table!`);
+                        });
                     }
-                  });
-                }
-              });
+                });
             });
 
-            // Automatic-ah Variations Table Create Panna Code
+            // Automatic-ah Variations Table
             const createVariationsQuery = `
-              CREATE TABLE IF NOT EXISTS product_variations (
-                id INT AUTO_INCREMENT PRIMARY KEY,
-                product_id INT,
-                color_name VARCHAR(50) NOT NULL,
-                color_code VARCHAR(50) NOT NULL,
-                image_url VARCHAR(500) NOT NULL,
-                FOREIGN KEY (product_id) REFERENCES products(id) ON DELETE CASCADE
-              )
-            `;
-            db!.query(createVariationsQuery, (errVarTable) => {
-              if (errVarTable) {
-                console.error("Variations table create aagala ❌:", errVarTable);
-              } else {
-                console.log("Product Variations Table Ready aagiduchu! 🎨");
-                
-                // Users Table
-                const createUsersQuery = `
-                  CREATE TABLE IF NOT EXISTS users (
+                CREATE TABLE IF NOT EXISTS product_variations (
                     id INT AUTO_INCREMENT PRIMARY KEY,
-                    name VARCHAR(255) NOT NULL,
-                    email VARCHAR(255) NOT NULL UNIQUE,
-                    password VARCHAR(255) NOT NULL,
-                    role VARCHAR(50) DEFAULT 'customer',
-                    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-                  )
-                `;
-                db!.query(createUsersQuery, (err) => {
-                  if (err) console.error("Users table create aagala ❌:", err);
-                  else console.log("Users Table Ready! 👥");
-                });
-
-                // Orders Table
-                const createOrdersQuery = `
-                  CREATE TABLE IF NOT EXISTS orders (
-                    id INT AUTO_INCREMENT PRIMARY KEY,
-                    user_id INT NOT NULL,
-                    total_amount DECIMAL(10, 2) NOT NULL,
-                    status VARCHAR(50) DEFAULT 'pending',
-                    shipping_address TEXT,
-                    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-                    FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
-                  )
-                `;
-                db!.query(createOrdersQuery, (err) => {
-                  if (err) console.error("Orders table create aagala ❌:", err);
-                  else console.log("Orders Table Ready! 🛍️");
-                });
-
-                // Order Items Table
-                const createOrderItemsQuery = `
-                  CREATE TABLE IF NOT EXISTS order_items (
-                    id INT AUTO_INCREMENT PRIMARY KEY,
-                    order_id INT NOT NULL,
-                    product_id INT NOT NULL,
-                    quantity INT NOT NULL DEFAULT 1,
-                    price DECIMAL(10, 2) NOT NULL,
-                    FOREIGN KEY (order_id) REFERENCES orders(id) ON DELETE CASCADE,
+                    product_id INT,
+                    color_name VARCHAR(50) NOT NULL,
+                    color_code VARCHAR(50) NOT NULL,
+                    image_url VARCHAR(500) NOT NULL,
                     FOREIGN KEY (product_id) REFERENCES products(id) ON DELETE CASCADE
-                  )
-                `;
-                db!.query(createOrderItemsQuery, (err) => {
-                  if (err) console.error("Order items table create aagala ❌:", err);
-                  else console.log("Order Items Table Ready! 📦");
-                });
-
-                
-                // One-time deletion of dummy/test products to keep the store fresh
-                const dummyNames = [
-                  'Cosmograph Daytona Mastercopy',
-                  'Royal Oak Automatic High Copy',
-                  'Nautilus Blue Dial Mastercopy',
-                  'Submariner Date Ceramic Copy',
-                  'Seamaster 300M Master Plan',
-                  'Classic Roman Heritage Quartz',
-                  'sunglasses test',
-                  'OMEGA SEAMASTER AQUA TERRA'
-                ];
-                db!.query("DELETE FROM products WHERE name IN (?)", [dummyNames], (errDel) => {
-                  if (errDel) {
-                    console.error("Error cleaning dummy/test products:", errDel);
-                  } else {
-                    console.log("Dummy/test products cleaned successfully! 🧼");
+                )
+            `;
+            db.query(createVariationsQuery, (errVarTable: any) => {
+                if (errVarTable) console.error("Variations table create aagala ❌:", errVarTable);
+                else {
+                    console.log("Product Variations Table Ready aagiduchu! 🎨");
                     
-                    // Cleanup any Jacob & Co / Jacon products to satisfy the user's request
-                    const deleteJacobQuery = `
-                      DELETE FROM products 
-                      WHERE LOWER(name) LIKE '%jacob%' 
-                         OR LOWER(name) LIKE '%jacon%' 
-                         OR LOWER(brand) LIKE '%jacob%' 
-                         OR LOWER(brand) LIKE '%jacon%'
-                         OR LOWER(category) LIKE '%jacob%'
-                         OR LOWER(category) LIKE '%jacon%'
+                    // Users Table
+                    const createUsersQuery = `
+                        CREATE TABLE IF NOT EXISTS users (
+                            id INT AUTO_INCREMENT PRIMARY KEY,
+                            name VARCHAR(255) NOT NULL,
+                            email VARCHAR(255) NOT NULL UNIQUE,
+                            password VARCHAR(255) NOT NULL,
+                            role VARCHAR(50) DEFAULT 'customer',
+                            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+                        )
                     `;
-                    db!.query(deleteJacobQuery, (errJacob, resJacob: any) => {
-                      if (errJacob) {
-                        console.error("Failed to delete Jacob products:", errJacob);
-                      } else if (resJacob) {
-                        console.log(`Deleted ${resJacob.affectedRows} Jacob/Jacon products from DB! 🧼`);
-                      }
+                    db.query(createUsersQuery, (errUsr: any) => {
+                        if (errUsr) console.error("Users table create aagala ❌:", errUsr);
+                        else {
+                            console.log("Users Table Ready! 👥");
+
+                            // Orders Table
+                            const createOrdersQuery = `
+                                CREATE TABLE IF NOT EXISTS orders (
+                                    id INT AUTO_INCREMENT PRIMARY KEY,
+                                    user_id INT NOT NULL,
+                                    total_amount DECIMAL(10, 2) NOT NULL,
+                                    status VARCHAR(50) DEFAULT 'pending',
+                                    shipping_address TEXT,
+                                    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                                    FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+                                )
+                            `;
+                            db.query(createOrdersQuery, (errOrd: any) => {
+                                if (errOrd) console.error("Orders table create aagala ❌:", errOrd);
+                                else {
+                                    console.log("Orders Table Ready! 🛍️");
+
+                                    // Order Items Table
+                                    const createOrderItemsQuery = `
+                                        CREATE TABLE IF NOT EXISTS order_items (
+                                            id INT AUTO_INCREMENT PRIMARY KEY,
+                                            order_id INT NOT NULL,
+                                            product_id INT NOT NULL,
+                                            quantity INT NOT NULL DEFAULT 1,
+                                            price DECIMAL(10, 2) NOT NULL,
+                                            FOREIGN KEY (order_id) REFERENCES orders(id) ON DELETE CASCADE,
+                                            FOREIGN KEY (product_id) REFERENCES products(id) ON DELETE CASCADE
+                                        )
+                                    `;
+                                    db.query(createOrderItemsQuery, (errItm: any) => {
+                                        if (errItm) console.error("Order items table create aagala ❌:", errItm);
+                                        else {
+                                            console.log("Order Items Table Ready! 📦");
+                                            
+                                            // One-time deletion of dummy/test products
+                                            const dummyNames = [
+                                                'Cosmograph Daytona Mastercopy',
+                                                'Royal Oak Automatic High Copy',
+                                                'Nautilus Blue Dial Mastercopy',
+                                                'Submariner Date Ceramic Copy',
+                                                'Seamaster 300M Master Plan',
+                                                'Classic Roman Heritage Quartz',
+                                                'sunglasses test',
+                                                'OMEGA SEAMASTER AQUA TERRA'
+                                            ];
+                                            db.query("DELETE FROM products WHERE name IN (?)", [dummyNames], (errDel: any) => {
+                                                if (errDel) console.error("Error cleaning dummy/test products:", errDel);
+                                                else {
+                                                    console.log("Dummy/test products cleaned successfully! 🧼");
+                                                    
+                                                    // Cleanup Jacob & Co products
+                                                    const deleteJacobQuery = `
+                                                        DELETE FROM products 
+                                                        WHERE LOWER(name) LIKE '%jacob%' 
+                                                           OR LOWER(name) LIKE '%jacon%' 
+                                                           OR LOWER(brand) LIKE '%jacob%' 
+                                                           OR LOWER(brand) LIKE '%jacon%'
+                                                           OR LOWER(category) LIKE '%jacob%'
+                                                           OR LOWER(category) LIKE '%jacon%'
+                                                    `;
+                                                    db.query(deleteJacobQuery, (errJacob: any, resJacob: any) => {
+                                                        if (errJacob) {
+                                                            console.error("Failed to delete Jacob products:", errJacob);
+                                                        } else if (resJacob) {
+                                                            console.log(`Deleted ${resJacob.affectedRows} Jacob/Jacon products from DB! 🧼`);
+                                                        }
+                                                    });
+                                                }
+                                            });
+                                        }
+                                    });
+                                }
+                            });
+                        }
                     });
-                  }
-                });
-              }
+                }
             });
-          }
-        });
-      }
+        }
     });
-  } catch (e) {
-    console.error("Failed to initialize MySQL Connection", e);
-    db = null;
-  }
-} else {
-  console.log("No MySQL connection environment variables found. Using default products.");
 }
 
 // List of products to guide the AI chatbot
@@ -291,7 +334,7 @@ Personality & Directives:
 // API routes
 app.get("/api/products", (req, res) => {
   if (db) {
-    db.query("SELECT * FROM products ORDER BY id DESC", (err, productsList: any) => {
+    db.query("SELECT * FROM products ORDER BY id DESC", (err: any, productsList: any) => {
       if (err) {
         console.error("Error fetching from MySQL:", err);
         // Fallback to defaults
@@ -321,7 +364,7 @@ app.get("/api/products", (req, res) => {
         return res.json(fallbackList);
       }
       
-      db!.query("SELECT * FROM product_variations", (errVar, variationsList: any) => {
+      db.query("SELECT * FROM product_variations", (errVar: any, variationsList: any) => {
         if (errVar) {
           console.error("Error fetching variations:", errVar);
           return res.json(productsList.map((p: any) => ({ ...p, variations: [] })));
@@ -366,11 +409,7 @@ app.get("/api/products", (req, res) => {
         { color: "#2563EB", image: "nautilus" },
         { color: "#F9FAFB", image: "https://images.unsplash.com/photo-1539874754764-5a96559165b0?q=80&w=600&auto=format&fit=crop" }
       ] : p.id === "p4" ? [
-        { color: "#059669", image: "https://images.unsplash.com/photo-1622434641406-a158123450f9?q=80&w=600&auto=format&fit=crop" },
-        { color: "#111827", image: "submariner" }
-      ] : p.id === "p5" ? [
-        { color: "#1E40AF", image: "seamaster" },
-        { color: "#4B5563", image: "https://images.unsplash.com/photo-1542496658-e33a6d0d50f6?q=80&w=600&auto=format&fit=crop" }
+        { color: "#059669", image: "https://images.unsplash.com/photo-1622434641406-a158123450f9?q=80&w=600&auto=format&fit=crop" }
       ] : []
     }));
     res.json(fallbackList);
@@ -394,7 +433,7 @@ app.post("/api/products", (req, res) => {
   }
 
   const sqlInsert = "INSERT INTO products (name, price, description, image_url, category, stock, specs, gender, brand) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)";
-  db.query(sqlInsert, [name, price, description, image_url, category || "Premier Watches", stock || 15, formattedSpecs, gender || "Unisex", brand || "Other"], (err, result: any) => {
+  db.query(sqlInsert, [name, price, description, image_url, category || "Premier Watches", stock || 15, formattedSpecs, gender || "Unisex", brand || "Other"], (err: any, result: any) => {
     if (err) {
       console.error(err);
       return res.status(500).json({ error: "Product save aagala macha" });
@@ -410,7 +449,7 @@ app.post("/api/products", (req, res) => {
         v.image_url || v.image || image_url
       ]);
       
-      db!.query("INSERT INTO product_variations (product_id, color_name, color_code, image_url) VALUES ?", [variationInserts], (errVar) => {
+      db.query("INSERT INTO product_variations (product_id, color_name, color_code, image_url) VALUES ?", [variationInserts], (errVar: any) => {
         if (errVar) {
           console.error("Error saving variations:", errVar);
         }
@@ -448,7 +487,7 @@ app.put("/api/products/:id", (req, res) => {
   db.query(
     sqlUpdate, 
     [name, price, description, image_url, category || "Premier Watches", stock || 15, formattedSpecs, gender || "Unisex", brand || "Other", productId], 
-    (err, result: any) => {
+    (err: any, result: any) => {
       if (err) {
         console.error("Error updating product in MySQL:", err);
         return res.status(500).json({ error: "Product update failed in MySQL" });
@@ -467,7 +506,7 @@ app.delete("/api/products/:id", (req, res) => {
   }
 
   const sqlDelete = "DELETE FROM products WHERE id = ?";
-  db.query(sqlDelete, [productId], (err, result) => {
+  db.query(sqlDelete, [productId], (err: any, result: any) => {
     if (err) {
       console.error("Error deleting product from MySQL:", err);
       return res.status(500).json({ error: "Product delete failed in MySQL" });
@@ -487,7 +526,7 @@ app.post("/api/auth/register", async (req, res) => {
 
   try {
     const hashedPassword = await bcrypt.hash(password, 10);
-    db.query("INSERT INTO users (name, email, password) VALUES (?, ?, ?)", [name, email, hashedPassword], (err, result: any) => {
+    db.query("INSERT INTO users (name, email, password) VALUES (?, ?, ?)", [name, email, hashedPassword], (err: any, result: any) => {
       if (err) {
         if (err.code === 'ER_DUP_ENTRY') return res.status(400).json({ error: "Email already exists" });
         return res.status(500).json({ error: "Registration failed" });
@@ -504,7 +543,7 @@ app.post("/api/auth/login", (req, res) => {
   const { email, password } = req.body;
   if (!db) return res.status(500).json({ error: "Database not connected" });
 
-  db.query("SELECT * FROM users WHERE email = ?", [email], async (err, results: any[]) => {
+  db.query("SELECT * FROM users WHERE email = ?", [email], async (err: any, results: any[]) => {
     if (err || !results || results.length === 0) return res.status(400).json({ error: "Invalid email or password" });
 
     const user = results[0];
@@ -526,13 +565,13 @@ app.post("/api/orders", (req, res) => {
   db.query(
     "INSERT INTO orders (user_id, total_amount, shipping_address) VALUES (?, ?, ?)",
     [user_id, total_amount, shipping_address || ""],
-    (err, result: any) => {
+    (err: any, result: any) => {
       if (err) return res.status(500).json({ error: "Order creation failed" });
       
       const orderId = result.insertId;
       const orderItemsData = items.map((item: any) => [orderId, item.product_id, item.quantity, item.price]);
       
-      db!.query("INSERT INTO order_items (order_id, product_id, quantity, price) VALUES ?", [orderItemsData], (errItems) => {
+      db.query("INSERT INTO order_items (order_id, product_id, quantity, price) VALUES ?", [orderItemsData], (errItems: any) => {
         if (errItems) return res.status(500).json({ error: "Failed to save order items" });
         res.status(201).json({ message: "Order placed successfully", orderId });
       });
@@ -545,7 +584,7 @@ app.get("/api/orders/:userId", (req, res) => {
   const { userId } = req.params;
   if (!db) return res.status(500).json({ error: "Database not connected" });
 
-  db.query("SELECT * FROM orders WHERE user_id = ? ORDER BY created_at DESC", [userId], (err, orders: any[]) => {
+  db.query("SELECT * FROM orders WHERE user_id = ? ORDER BY created_at DESC", [userId], (err: any, orders: any[]) => {
     if (err) return res.status(500).json({ error: "Failed to fetch orders" });
     res.json(orders);
   });
@@ -614,6 +653,297 @@ app.post("/api/chat", async (req, res) => {
   }
 });
 
+app.post("/api/send-order-email", async (req, res) => {
+  const { order } = req.body;
+
+  if (!order) {
+    return res.status(400).json({ success: false, message: "Order data is required, machan!" });
+  }
+
+  const emailUser = process.env.EMAIL_USER;
+  const emailPass = process.env.EMAIL_PASS;
+  const emailHost = process.env.EMAIL_HOST || "smtp.gmail.com";
+  const emailPort = Number(process.env.EMAIL_PORT) || 465;
+
+  if (!emailUser || !emailPass || emailUser.trim() === "" || emailPass.trim() === "") {
+    console.warn("EMAIL_USER or EMAIL_PASS environment variables not configured. Skipping email send.");
+    return res.json({ 
+      success: true, 
+      message: "Order placed, but email was not sent because SMTP credentials are not configured in your .env file, machan." 
+    });
+  }
+
+  try {
+    const transporter = nodemailer.createTransport({
+      host: emailHost,
+      port: emailPort,
+      secure: emailPort === 465,
+      auth: {
+        user: emailUser,
+        pass: emailPass,
+      },
+    });
+
+    const itemsHtml = order.items.map((item: any) => `
+      <tr style="border-bottom: 1px solid #e5e7eb;">
+        <td style="padding: 12px; font-weight: bold; color: #1f2937;">${item.product.name}</td>
+        <td style="padding: 12px; text-align: center; color: #4b5563;">${item.quantity}</td>
+        <td style="padding: 12px; text-align: right; color: #1f2937; font-family: monospace;">₹${item.product.price.toLocaleString("en-IN")}</td>
+        <td style="padding: 12px; text-align: right; color: #1f2937; font-family: monospace; font-weight: bold;">₹${(item.product.price * item.quantity).toLocaleString("en-IN")}</td>
+      </tr>
+    `).join("");
+
+    const discountHtml = order.discount > 0 ? `
+      <div style="display: flex; justify-content: space-between; margin-bottom: 8px; color: #16a34a; font-weight: bold;">
+        <span>Promo Discount:</span>
+        <span>-₹${order.discount.toLocaleString("en-IN")}</span>
+      </div>
+    ` : "";
+
+    const paymentDetailsHtml = order.paymentMethod === "upi" ? `
+      <div style="background-color: #f9fafb; border: 1px solid #e5e7eb; padding: 16px; margin-top: 20px;">
+        <h4 style="margin-top: 0; color: #111827; font-family: sans-serif; font-size: 14px; text-transform: uppercase; letter-spacing: 0.05em;">UPI Direct Payment Details</h4>
+        <p style="margin: 4px 0; font-size: 13px; color: #4b5563;"><strong>Payment Method:</strong> UPI Direct Pay (to 9688616838)</p>
+        <p style="margin: 4px 0; font-size: 13px; color: #4b5563;"><strong>UPI ID Transferred:</strong> dineshdev5227-2@okhdfcbank</p>
+        <p style="margin: 4px 0; font-size: 13px; color: #4b5563;"><strong>UTR / Transaction Reference No:</strong> <code style="background-color: #e5e7eb; padding: 2px 6px; font-weight: bold;">${order.utr || "N/A"}</code></p>
+        <p style="margin: 8px 0 0 0; font-size: 11px; color: #b45309; font-style: italic;">👉 Your order will be approved for shipping as soon as we verify the UTR number with our HDFC bank account, machan!</p>
+      </div>
+    ` : `
+      <div style="background-color: #f0fdf4; border: 1px solid #bbf7d0; padding: 16px; margin-top: 20px;">
+        <h4 style="margin-top: 0; color: #15803d; font-family: sans-serif; font-size: 14px; text-transform: uppercase; letter-spacing: 0.05em;">WhatsApp Order Registration</h4>
+        <p style="margin: 4px 0; font-size: 13px; color: #166534;"><strong>Payment Status:</strong> Pending QR Scan Verification</p>
+        <p style="margin: 8px 0 0 0; font-size: 11px; color: #166534; font-style: italic;">👉 We will send you our official GPay/PhonePe QR code on your WhatsApp shortly to complete the transfer, machan!</p>
+      </div>
+    `;
+
+    const emailHtml = `
+      <div style="background-color: #ffffff; border-left: 16px solid #d97706; border-right: 1px solid #e5e7eb; border-top: 1px solid #e5e7eb; border-bottom: 1px solid #e5e7eb; max-width: 600px; margin: 0 auto; padding: 24px; font-family: system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif; box-sizing: border-box;">
+        
+        <!-- Header brand details -->
+        <div style="background-color: #09090b; padding: 24px; color: #ffffff; margin-bottom: 25px; relative;">
+          <table style="width: 100%; border-collapse: collapse;">
+            <tr>
+              <td>
+                <h2 style="margin: 0; font-size: 20px; font-weight: 900; tracking-widest: 0.1em; color: #ffffff; text-transform: uppercase;">
+                  MADURAI GADGETS <span style="color: #f59e0b;">58</span>
+                </h2>
+                <p style="margin: 5px 0 0 0; font-size: 9px; font-family: monospace; text-transform: uppercase; color: #a1a1aa; letter-spacing: 0.2em;">
+                  OFFICIAL RETAIL WATCH PASS &amp; ORDER PERMIT
+                </p>
+                <p style="margin: 10px 0 0 0; font-size: 8px; color: #71717a; font-family: sans-serif; line-height: 1.4;">
+                  Simmakkal Outlet &bull; Premium Replica Timepieces &bull; A+ Certified Grade-A
+                </p>
+              </td>
+              <td style="text-align: right; vertical-align: top; font-family: monospace; width: 150px;">
+                <span style="font-size: 10px; color: #f59e0b; font-weight: bold; display: block; text-transform: uppercase;">
+                  ID: ${order.id}
+                </span>
+                <span style="font-size: 7px; color: #71717a; display: block; margin-top: 5px; text-transform: uppercase; letter-spacing: 0.1em;">
+                  SECURE BILLING TICKET
+                </span>
+              </td>
+            </tr>
+          </table>
+        </div>
+
+        <!-- Details Section -->
+        <table style="width: 100%; border-collapse: collapse; font-size: 13px; line-height: 1.5; margin-bottom: 25px;">
+          <tr>
+            <td style="width: 50%; padding-right: 15px; vertical-align: top;">
+              <h4 style="border-bottom: 1px solid #e5e7eb; padding-bottom: 4px; margin: 0 0 10px 0; color: #a1a1aa; font-family: monospace; font-size: 9px; letter-spacing: 0.15em; font-weight: bold;">CUSTOMER DETAILS</h4>
+              <div style="color: #4b5563;">
+                <p style="margin: 3px 0;">Name: <strong style="color: #111827;">${order.shipping.fullName}</strong></p>
+                <p style="margin: 3px 0;">Contact Phone: <strong style="color: #111827;">${order.shipping.phone}</strong></p>
+                <p style="margin: 3px 0;">Contact Email: <strong style="color: #111827;">${order.shipping.email}</strong></p>
+                <p style="margin: 3px 0;">Delivery Address: <strong style="color: #111827;">${order.shipping.address}, ${order.shipping.city} - ${order.shipping.zipCode}</strong></p>
+              </div>
+            </td>
+            <td style="width: 50%; padding-left: 15px; vertical-align: top;">
+              <h4 style="border-bottom: 1px solid #e5e7eb; padding-bottom: 4px; margin: 0 0 10px 0; color: #a1a1aa; font-family: monospace; font-size: 9px; letter-spacing: 0.15em; font-weight: bold;">ORDER &amp; SHIPPING INFO</h4>
+              <div style="color: #4b5563;">
+                <p style="margin: 3px 0;">Outlet Location: <strong style="color: #d97706;">Simmakkal Showroom</strong></p>
+                <p style="margin: 3px 0;">Purchase Date: <strong style="color: #111827;">${order.date.includes(" at ") ? order.date.split(" at ")[0] : order.date.split(",")[0]}</strong></p>
+                <p style="margin: 3px 0;">Purchase Time: <strong style="color: #111827;">${order.date.includes(" at ") ? order.date.split(" at ")[1] : (order.date.split(",")[1] || "12:00 PM")}</strong></p>
+                <p style="margin: 3px 0;">Fulfillment Status: <strong style="color: #111827;">${order.status} (Verified)</strong></p>
+              </div>
+            </td>
+          </tr>
+        </table>
+
+        <!-- Billing Table -->
+        <h4 style="margin: 0 0 8px 0; color: #a1a1aa; font-family: monospace; font-size: 9px; letter-spacing: 0.15em; font-weight: bold;">BILLING DETAILS &amp; FEE COMPILATION</h4>
+        <table style="width: 100%; border-collapse: collapse; font-size: 13px; margin-bottom: 25px;">
+          <thead>
+            <tr style="background-color: #f3f4f6; border-bottom: 1px solid #e5e7eb; color: #4b5563; font-family: monospace; font-size: 9px; text-transform: uppercase; font-weight: bold; letter-spacing: 0.05em;">
+              <th style="padding: 10px; text-align: left;">Charge Description</th>
+              <th style="padding: 10px; text-align: right; width: 140px;">Pricing (INR)</th>
+            </tr>
+          </thead>
+          <tbody style="color: #374151;">
+            ${order.items.map((item: any) => `
+              <tr style="border-bottom: 1px solid #e5e7eb;">
+                <td style="padding: 10px;">
+                  <strong style="color: #111827; display: block;">${item.product.name} (x${item.quantity})</strong>
+                  <span style="font-size: 9px; color: #9ca3af; font-family: monospace;">${item.product.category} &bull; Premium Quality Mastercopy</span>
+                </td>
+                <td style="padding: 10px; text-align: right; font-family: monospace; font-weight: bold; color: #111827;">
+                  INR ${Math.round(item.product.price * item.quantity).toLocaleString("en-IN")}
+                </td>
+              </tr>
+            `).join("")}
+            <tr style="color: #6b7280; font-size: 11px; font-family: monospace;">
+              <td style="padding: 6px 10px;">Subtotal (Excl. Tax)</td>
+              <td style="padding: 6px 10px; text-align: right;">
+                INR ${Math.round(order.total / 1.08 + (order.discount || 0)).toLocaleString("en-IN")}
+              </td>
+            </tr>
+            ${order.discount > 0 ? `
+              <tr style="color: #16a34a; font-size: 11px; font-family: monospace; font-weight: bold;">
+                <td style="padding: 6px 10px;">Promo Discount</td>
+                <td style="padding: 6px 10px; text-align: right;">-INR ${order.discount.toLocaleString("en-IN")}</td>
+              </tr>
+            ` : ""}
+            <tr style="color: #6b7280; font-size: 11px; font-family: monospace;">
+              <td style="padding: 6px 10px;">SGST &amp; CGST Surcharge (8%)</td>
+              <td style="padding: 6px 10px; text-align: right;">
+                INR ${Math.round(order.total - (order.total / 1.08)).toLocaleString("en-IN")}
+              </td>
+            </tr>
+          </tbody>
+        </table>
+
+        <!-- Total Paid block -->
+        <div style="background-color: #d97706; color: #ffffff; padding: 14px; font-weight: bold; font-size: 12px; text-align: left; margin-bottom: 20px; overflow: auto;">
+          <span style="float: left; font-family: sans-serif;">TOTAL PAID AMOUNT IN FULL</span>
+          <span style="float: right; font-family: monospace; font-size: 14px;">INR ${Math.round(order.total).toLocaleString("en-IN")}</span>
+        </div>
+
+        <!-- Barcode & Stamp Row -->
+        <table style="width: 100%; border-collapse: collapse; margin-top: 20px; border-bottom: 1px dashed #e5e7eb; padding-bottom: 20px; margin-bottom: 25px;">
+          <tr>
+            <td style="vertical-align: middle; padding-bottom: 15px;">
+              <p style="margin: 0 0 5px 0; font-family: monospace; font-size: 8px; color: #a1a1aa; font-weight: bold; letter-spacing: 0.1em; text-transform: uppercase;">GATE-PASS SECURITY BARCODE</p>
+              <svg width="220" height="35" style="fill: #111827;">
+                <rect x="0" y="0" width="3" height="35" />
+                <rect x="5" y="0" width="1" height="35" />
+                <rect x="8" y="0" width="4" height="35" />
+                <rect x="14" y="0" width="1" height="35" />
+                <rect x="17" y="0" width="2" height="35" />
+                <rect x="21" y="0" width="1" height="35" />
+                <rect x="24" y="0" width="3" height="35" />
+                <rect x="29" y="0" width="2" height="35" />
+                <rect x="33" y="0" width="1" height="35" />
+                <rect x="36" y="0" width="5" height="35" />
+                <rect x="43" y="0" width="1" height="35" />
+                <rect x="46" y="0" width="2" height="35" />
+                <rect x="50" y="0" width="1" height="35" />
+                <rect x="53" y="0" width="3" height="35" />
+                <rect x="58" y="0" width="1" height="35" />
+                <rect x="61" y="0" width="2" height="35" />
+                <rect x="65" y="0" width="4" height="35" />
+                <rect x="71" y="0" width="1" height="35" />
+                <rect x="74" y="0" width="5" height="35" />
+                <rect x="81" y="0" width="2" height="35" />
+                <rect x="85" y="0" width="1" height="35" />
+                <rect x="88" y="0" width="3" height="35" />
+                <rect x="93" y="0" width="1" height="35" />
+                <rect x="96" y="0" width="2" height="35" />
+                <rect x="100" y="0" width="4" height="35" />
+                <rect x="106" y="0" width="1" height="35" />
+                <rect x="109" y="0" width="5" height="35" />
+                <rect x="116" y="0" width="2" height="35" />
+                <rect x="120" y="0" width="1" height="35" />
+                <rect x="123" y="0" width="3" height="35" />
+                <rect x="128" y="0" width="1" height="35" />
+                <rect x="131" y="0" width="2" height="35" />
+                <rect x="135" y="0" width="4" height="35" />
+                <rect x="141" y="0" width="1" height="35" />
+                <rect x="144" y="0" width="5" height="35" />
+                <rect x="151" y="0" width="2" height="35" />
+                <rect x="155" y="0" width="1" height="35" />
+                <rect x="158" y="0" width="3" height="35" />
+                <rect x="163" y="0" width="1" height="35" />
+                <rect x="166" y="0" width="2" height="35" />
+                <rect x="170" y="0" width="4" height="35" />
+                <rect x="176" y="0" width="1" height="35" />
+                <rect x="179" y="0" width="5" height="35" />
+                <rect x="186" y="0" width="2" height="35" />
+                <rect x="190" y="0" width="1" height="35" />
+                <rect x="193" y="0" width="3" height="35" />
+                <rect x="198" y="0" width="1" height="35" />
+                <rect x="201" y="0" width="2" height="35" />
+                <rect x="205" y="0" width="4" height="35" />
+                <rect x="211" y="0" width="1" height="35" />
+                <rect x="214" y="0" width="5" height="35" />
+              </svg>
+              <span style="font-size: 7px; font-family: monospace; color: #71717a; display: block; margin-top: 2px;">*${order.id}-VERIFIED*</span>
+            </td>
+            <td style="vertical-align: middle; text-align: right; width: 180px; padding-bottom: 15px;">
+              ${order.paymentStatus === 'Paid' ? `
+                <div style="border: 2px solid #10b981; background-color: #f0fdf4; padding: 10px; text-align: center; font-size: 11px;">
+                  <strong style="color: #047857; display: block; letter-spacing: 0.05em; font-weight: bold; text-transform: uppercase;">RESERVED &amp; PAID</strong>
+                  <span style="color: #059669; font-size: 6px; display: block; margin-top: 2px; font-weight: bold; letter-spacing: 0.05em;">VERIFIED VIA FIRESTORE</span>
+                </div>
+              ` : `
+                <div style="border: 2px solid #ef4444; background-color: #fdf2f2; padding: 10px; text-align: center; font-size: 11px;">
+                  <strong style="color: #b91c1c; display: block; letter-spacing: 0.05em; font-weight: bold; text-transform: uppercase;">UNPAID &amp; PENDING</strong>
+                  <span style="color: #dc2626; font-size: 6px; display: block; margin-top: 2px; font-weight: bold; letter-spacing: 0.05em;">WAITING TO RECEIVE</span>
+                </div>
+              `}
+            </td>
+          </tr>
+        </table>
+
+        <!-- Store Regulations Code of Conduct -->
+        <div style="background-color: #f9fafb; border: 1px solid #e5e7eb; padding: 16px; font-size: 10px; color: #6b7280; line-height: 1.5; margin-bottom: 25px;">
+          <h5 style="margin: 0 0 6px 0; color: #374151; font-family: monospace; font-size: 10px; font-weight: bold; letter-spacing: 0.05em; text-transform: uppercase;">STORE REGULATIONS &amp; TERMS OF CONDUCT</h5>
+          <ol style="margin: 0; padding-left: 15px;">
+            <li style="margin-bottom: 4px;">All products are Grade-A premium copy timepieces featuring Japanese sweeping quartz/automatic movements.</li>
+            <li style="margin-bottom: 4px;">Secure delivery is complimentary. Registered order details are instantly synced to our tracking ledger.</li>
+            <li style="margin-bottom: 4px;">For warranty claims or returns, customers must present this generated invoice ticket to our support channels.</li>
+            <li style="margin-bottom: 4px;">Order status inquiries, cancellations or custom updates can be verified directly via our WhatsApp portal.</li>
+          </ol>
+        </div>
+
+        <!-- Footer block -->
+        <div style="border-top: 1px solid #e5e7eb; padding-top: 20px; text-align: center; font-size: 9px; color: #9ca3af; line-height: 1.6;">
+          <p style="margin: 2px 0;">🏛️ <strong>Madurai Gadgets 58 Flagship Showroom:</strong> Vakkil New Street, Simmakkal, Madurai - TN 625001</p>
+          <p style="margin: 2px 0;">📞 WhatsApp Support: +91 95859 69334 | Email: nandharx420@gmail.com</p>
+          <p style="margin: 10px 0 0 0; color: #6b7280; font-weight: bold; text-transform: uppercase; letter-spacing: 0.1em;">Wear Peak, Master Your Style! ⌚🌟</p>
+        </div>
+      </div>
+    `;
+
+    const mailOptions = {
+      from: `"Madurai Gadgets 58" <${emailUser}>`,
+      to: order.shipping.email,
+      bcc: ["nandharx420@gmail.com", emailUser],
+      subject: `[MG58] Order Placed Successfully - Invoice #${order.id}`,
+      html: emailHtml,
+    };
+
+    const info = await transporter.sendMail(mailOptions);
+    console.log(`Order placement receipt email sent successfully: ${info.messageId}`);
+    res.json({ success: true, messageId: info.messageId, message: "Order placed & invoice email sent successfully, machan! 📬" });
+  } catch (error: any) {
+    console.error("Failed to send order placement email:", error);
+    res.status(500).json({ success: false, error: error.message, message: "Order saved, but receipt email transfer failed." });
+  }
+});
+
+// ==========================================
+// Global Error Handler Middleware
+// ==========================================
+app.use((err: any, req: any, res: any, next: any) => {
+    console.error("Critical Server Error 🚨: ", err.stack);
+    
+    res.status(500).json({
+        success: false,
+        message: "Something went wrong on the server, but we are still alive! 🔥",
+        error: process.env.NODE_ENV === 'development' ? err.message : {}
+    });
+});
+
 // Configure Vite middleware or production build output
 async function startServer() {
   if (process.env.NODE_ENV !== "production") {
@@ -633,7 +963,7 @@ async function startServer() {
   }
 
   app.listen(PORT, "0.0.0.0", () => {
-    console.log(`Express custom server running at http://0.0.0.0:${PORT}`);
+    console.log(`Express custom server running at http://0.0.0.0:${PORT} 🚀🛡️`);
   });
 }
 
