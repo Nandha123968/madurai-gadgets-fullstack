@@ -4603,7 +4603,7 @@ My order is registered in the tracker with reference *${orderId}*. Thank you! ðŸ
               initial={{ opacity: 0, scale: 0.95 }}
               animate={{ opacity: 1, scale: 1 }}
               exit={{ opacity: 0, scale: 0.95 }}
-              className="bg-white rounded-md border border-zinc-200 shadow-2xl max-w-2xl w-full max-h-[90vh] overflow-y-auto overflow-x-hidden p-6 relative flex flex-col md:flex-row gap-6"
+              className="bg-white rounded-md border border-zinc-200 shadow-2xl max-w-2xl w-full max-h-[90vh] overflow-y-auto overflow-x-hidden p-6 relative flex flex-col gap-6"
             >
               {/* Close tool */}
               <button
@@ -4613,7 +4613,9 @@ My order is registered in the tracker with reference *${orderId}*. Thank you! ðŸ
                 <X className="w-4 h-4" />
               </button>
 
-              {/* Left Column Art depiction */}
+              {/* Main details row (two columns) */}
+              <div className="flex flex-col md:flex-row gap-6 w-full">
+                {/* Left Column Art depiction */}
               <div className="md:w-1/2 space-y-4">
                 {renderProductIllustration(activeDetailImage || detailedProduct.image, "h-56 sm:h-64", 900)}
                 
@@ -4730,8 +4732,60 @@ My order is registered in the tracker with reference *${orderId}*. Thank you! ðŸ
                 </div>
 
               </div>
+            </div>
 
-            </motion.div>
+            {/* Premium Upsell/Recommendation Section */}
+            {(() => {
+              // Upsell criteria: Find watches in the same category or overall, with a price > current product price
+              // Sort them ascending (lowest up-charged item first) and display top 3 picks
+              const upsellPicks = products
+                .filter((p) => p.id !== detailedProduct.id && p.price > detailedProduct.price)
+                .sort((a, b) => a.price - b.price)
+                .slice(0, 3);
+
+              if (upsellPicks.length === 0) return null;
+
+              return (
+                <div className="pt-5 border-t border-zinc-200 mt-2 space-y-3 font-sans w-full">
+                  <div className="flex items-center gap-1.5">
+                    <Sparkles className="w-3.5 h-3.5 text-yellow-500 shrink-0" />
+                    <span className="text-[10px] font-mono font-bold text-zinc-500 uppercase tracking-widest leading-none">
+                      ðŸ”¥ Upgrade Your Style: Premium Picks You Might Love
+                    </span>
+                  </div>
+                  <div className="grid grid-cols-3 gap-3">
+                    {upsellPicks.map((pick) => (
+                      <button
+                        key={pick.id}
+                        onClick={() => {
+                          setDetailedProduct(pick); // change modal focus
+                          setActiveDetailImage(null); // reset variant selection
+                        }}
+                        className="group border border-zinc-200 hover:border-yellow-500 p-2 text-left bg-zinc-50 hover:bg-white rounded transition-all flex flex-col justify-between items-stretch cursor-pointer select-none"
+                      >
+                        <div className="h-16 sm:h-20 bg-transparent flex items-center justify-center p-0.5 overflow-hidden">
+                          {renderProductIllustration(pick.image, "h-full", 150)}
+                        </div>
+                        <div className="mt-1 min-w-0">
+                          <h4 className="font-bold text-[9px] sm:text-[10px] text-zinc-800 truncate leading-tight group-hover:text-yellow-600">
+                            {pick.name}
+                          </h4>
+                          <div className="flex items-center justify-between mt-0.5">
+                            <span className="text-[9px] font-mono text-zinc-950 font-bold">
+                              â‚¹{pick.price.toLocaleString("en-IN")}
+                            </span>
+                            <span className="text-[8px] font-mono text-emerald-600 font-bold">
+                              +â‚¹{(pick.price - detailedProduct.price).toLocaleString("en-IN")}
+                            </span>
+                          </div>
+                        </div>
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              );
+            })()}
+          </motion.div>
           </div>
         )}
       </AnimatePresence>
