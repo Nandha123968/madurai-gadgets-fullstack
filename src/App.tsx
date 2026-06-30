@@ -1562,7 +1562,8 @@ My order is registered in the tracker with reference *${orderId}*. Thank you! ğŸ
                   loop
                   muted
                   playsInline
-                  className="w-full h-full object-cover opacity-100"
+                  preload="auto"
+                  className="w-full h-full object-cover opacity-65"
                 >
                   <source src="https://res.cloudinary.com/drtndbcbu/video/upload/v1782845960/WhatsApp_Video_2026-06-30_at_12.07.48_PM_nntfpt.mp4" type="video/mp4" />
                 </video>
@@ -1581,7 +1582,7 @@ My order is registered in the tracker with reference *${orderId}*. Thank you! ğŸ
                 initial={{ opacity: 0, y: 15 }}
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ duration: 0.6, ease: "easeOut" }}
-                className="max-w-3xl mx-auto text-center relative z-10 space-y-6 sm:space-y-8 flex flex-col items-center w-full"
+                className="max-w-3xl mx-auto text-center relative z-10 space-y-6 sm:space-y-8 flex flex-col items-center w-full mt-[-15px] sm:mt-[-35px]"
               >
                 <div className="space-y-2.5 sm:space-y-4">
                   <motion.span 
@@ -1598,7 +1599,7 @@ My order is registered in the tracker with reference *${orderId}*. Thank you! ğŸ
                     transition={{ delay: 0.3, duration: 0.6 }}
                     className="select-none flex flex-col pt-1 font-syne uppercase"
                   >
-                    <span className="text-yellow-600 font-extrabold tracking-tight text-3xl xs:text-4xl sm:text-7xl lg:text-8xl leading-[1.1] mb-1 sm:mb-3 drop-shadow-sm">
+                    <span className="bg-gradient-to-r from-amber-500 via-yellow-200 via-amber-400 to-yellow-600 bg-clip-text text-transparent font-extrabold tracking-tight text-3xl xs:text-4xl sm:text-7xl lg:text-8xl leading-[1.1] mb-1 sm:mb-3 drop-shadow-[0_2px_8px_rgba(180,83,9,0.25)] select-none">
                       Madurai Gadgets
                     </span>
                     <span className="block text-zinc-900 font-bold tracking-[0.05em] text-lg xs:text-2xl sm:text-4xl lg:text-5xl leading-tight">
