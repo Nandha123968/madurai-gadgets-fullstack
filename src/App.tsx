@@ -1615,7 +1615,7 @@ My order is registered in the tracker with reference *${orderId}*. Thank you! ğŸ
                   initial={{ opacity: 0, y: 12 }}
                   animate={{ opacity: 1, y: 0 }}
                   transition={{ delay: 0.6, duration: 0.6 }}
-                  className="flex flex-wrap justify-center items-center gap-3 sm:gap-4 mt-6 sm:mt-8"
+                  className="flex flex-wrap justify-center items-center gap-3 sm:gap-4 mt-18 sm:mt-26"
                 >
                   <button
                     onClick={() => {
@@ -1640,7 +1640,7 @@ My order is registered in the tracker with reference *${orderId}*. Thank you! ğŸ
                 <div className="flex items-center gap-2">
                   <Truck className="w-4 h-4 text-yellow-500 shrink-0" />
                   <div>
-                    <p className="font-bold text-zinc-800 uppercase tracking-wider text-[10px]">Madurai Delivery</p>
+                    <p className="font-bold text-zinc-800 uppercase tracking-wider text-[10px]">Pan India Delivery</p>
                     <p className="text-[10px] text-zinc-500">Complimentary shipping pan India</p>
                   </div>
                 </div>
