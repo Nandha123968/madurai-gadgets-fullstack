@@ -1564,7 +1564,7 @@ My order is registered in the tracker with reference *${orderId}*. Thank you! ğŸ
                   playsInline
                   className="w-full h-full object-cover opacity-100"
                 >
-                  <source src="https://res.cloudinary.com/drtndbcbu/video/upload/v1782769948/agent_generate_video_-_Ultra-realistic_3D_cinematic_product_shot_animated_from_this_jsjn2c.mp4" type="video/mp4" />
+                  <source src="https://res.cloudinary.com/drtndbcbu/video/upload/v1782845960/WhatsApp_Video_2026-06-30_at_12.07.48_PM_nntfpt.mp4" type="video/mp4" />
                 </video>
                 {/* Overlay gradient shroud for crisp text readability */}
                 <div className="absolute inset-0 bg-gradient-to-br from-white/70 via-white/35 to-white/70"></div>
