@@ -570,17 +570,17 @@ Please confirm availability and share GPay/PhonePe QR Code so I can secure it ri
               finalName = "GUSS PREMIUM LADIES WATCH";
               finalPrice = 1999;
               finalDesc = "Elegant triangular dial luxury ladies fashion watch copy.";
-              finalCategory = "Premier Watches";
+              finalCategory = "Normal Watches";
             } else if (urlLower.includes("fossil")) {
               finalName = "FOSSIL PREMIUM LADIES WATCH";
               finalPrice = 1999;
               finalDesc = "Stunning rose-gold fashion ladies watch copy.";
-              finalCategory = "Premier Watches";
+              finalCategory = "Normal Watches";
             } else if (urlLower.includes("michael") || urlLower.includes("kors")) {
               finalName = "MICHAEL KORS LADIES WATCH";
               finalPrice = 1999;
               finalDesc = "Premium luxury ladies watch copy with elegant styling.";
-              finalCategory = "Premier Watches";
+              finalCategory = "Normal Watches";
             }
           }
 
@@ -629,7 +629,20 @@ Please confirm availability and share GPay/PhonePe QR Code so I can secure it ri
           };
         });
         
-        setProducts(formattedProducts); 
+        // Reconstruct catalog by combining static ALL_PRODUCTS with MySQL custom uploads
+        const combined = [...ALL_PRODUCTS];
+        formattedProducts.forEach((dbProd) => {
+          const existingIndex = combined.findIndex(
+            (p) => p.id === dbProd.id || p.name.toLowerCase() === dbProd.name.toLowerCase()
+          );
+          if (existingIndex > -1) {
+            combined[existingIndex] = dbProd;
+          } else {
+            combined.push(dbProd);
+          }
+        });
+
+        setProducts(combined); 
       }
     } catch (error) {
       console.error("Backend connect aagala macha:", error);
