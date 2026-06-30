@@ -3,7 +3,6 @@ const cors = require('cors');
 const dotenv = require('dotenv');
 const mysql = require('mysql2');
 const cloudinary = require('cloudinary').v2;
-const { GoogleGenAI } = require('@google/genai');
 
 // Load environment variables
 dotenv.config();
@@ -13,28 +12,24 @@ app.use(cors());
 app.use(express.json()); // Frontend-la irunthu vara JSON data-va padikka
 
 // ==========================================
-// 1. MySQL Database Connection (Pool)
+// 1. MySQL Database Connection
 // ==========================================
-const db = mysql.createPool({
+const db = mysql.createConnection({
     host: process.env.DB_HOST,
     user: process.env.DB_USER,
     password: process.env.DB_PASSWORD,
     database: process.env.DB_NAME,
-    port: process.env.DB_PORT ? Number(process.env.DB_PORT) : 3306,
-    ssl: { rejectUnauthorized: false },
-    waitForConnections: true,
-    connectionLimit: 10,
-    queueLimit: 0
+    port: process.env.DB_PORT,
+    ssl: { rejectUnauthorized: false }
 });
 
-db.getConnection((err, connection) => {
+db.connect((err) => {
     if (err) {
-        console.error('Database connection pool error ❌: ', err);
+        console.error('Database connection error ❌: ', err);
     } else {
-        console.log('MySQL Database Connected Successfully via Pool! 🔥');
-        connection.release();
+        console.log('MySQL Database Connected Successfully! 🔥');
         
-        // Full schema query
+        // Automatic-ah Products Table Create Panna Code
         const createTableQuery = `
             CREATE TABLE IF NOT EXISTS products (
                 id INT AUTO_INCREMENT PRIMARY KEY,
@@ -45,23 +40,9 @@ db.getConnection((err, connection) => {
                 created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
             )
         `;
-
-        // Revert to full schema if name column is missing
-        db.query("SHOW COLUMNS FROM products LIKE 'name'", (err, rows) => {
-            if (!err && (!rows || rows.length === 0)) {
-                console.log("Image-only MySQL schema detected. Re-creating table with full metadata schema...");
-                db.query("DROP TABLE products", (dropErr) => {
-                    db.query(createTableQuery, (createErr) => {
-                        if (createErr) console.error('Table recreate failed ❌:', createErr);
-                        else console.log('Products Table recreated successfully with full metadata schema! 📦');
-                    });
-                });
-            } else {
-                db.query(createTableQuery, (createErr) => {
-                    if (createErr) console.error('Table create failed ❌:', createErr);
-                    else console.log('Products Table Ready with full metadata schema! 📦');
-                });
-            }
+        db.query(createTableQuery, (err, result) => {
+            if (err) console.error('Table create aagala ❌:', err);
+            else console.log('Products Table Ready aagiduchu! 📦');
         });
     }
 });
@@ -80,7 +61,7 @@ console.log('Cloudinary Configured! ☁️');
 // 3. E-Commerce API Routes
 // ==========================================
 
-// Route 1: Puthu Product-ah Add panna (POST - stores full product data in MySQL)
+// Route 1: Puthu Product-ah Add panna (POST)
 app.post('/api/products', (req, res) => {
     const { name, price, description, image_url } = req.body;
 
@@ -88,217 +69,22 @@ app.post('/api/products', (req, res) => {
     db.query(sqlInsert, [name, price, description, image_url], (err, result) => {
         if (err) {
             console.error(err);
-            return res.status(500).json({ error: "Product save failed in MySQL ❌" });
+            return res.status(500).json({ error: "Product save aagala macha" });
         }
-        res.status(201).json({ message: "Product saved in MySQL! 📦", productId: result.insertId });
+        res.status(201).json({ message: "Product super-ah add aayiduchu!", productId: result.insertId });
     });
 });
 
-// Route 2: Ellam Products-aiyum Edukka (GET - retrieves full metadata)
+// Route 2: Ellam Products-aiyum Edukka (GET)
 app.get('/api/products', (req, res) => {
     const sqlSelect = "SELECT * FROM products";
     db.query(sqlSelect, (err, results) => {
         if (err) {
             console.error(err);
-            return res.status(500).json({ error: "Could not fetch products from MySQL" });
+            return res.status(500).json({ error: "Products edukkum pothu error" });
         }
         res.status(200).json(results);
     });
-});
-
-// Route 3: Product details edit update (PUT - updates full metadata in MySQL)
-app.put('/api/products/:id', (req, res) => {
-    const { id } = req.params;
-    const { name, price, description, image_url } = req.body;
-
-    const sqlUpdate = "UPDATE products SET name = ?, price = ?, description = ?, image_url = ? WHERE id = ?";
-    db.query(sqlUpdate, [name, price, description, image_url, id], (err, result) => {
-        if (err) {
-            console.error(err);
-            return res.status(500).json({ error: "Could not update product in MySQL ❌" });
-        }
-        res.status(200).json({ message: "Product updated in MySQL! ✅" });
-    });
-});
-
-// Route 4: Product deletion (DELETE - removes image row from MySQL and deletes from Cloudinary)
-app.delete('/api/products/:id', (req, res) => {
-    const { id } = req.params;
-
-    // 1. Fetch current image URL to perform Cloudinary cleanup
-    const sqlSelect = "SELECT image_url FROM products WHERE id = ?";
-    db.query(sqlSelect, [id], (err, rows) => {
-        if (!err && rows && rows.length > 0) {
-            const imageUrl = rows[0].image_url;
-            const publicId = getCloudinaryPublicId(imageUrl);
-            
-            if (publicId) {
-                console.log(`Purging image from Cloudinary: ${publicId}...`);
-                cloudinary.uploader.destroy(publicId, (cloudinaryErr, result) => {
-                    if (cloudinaryErr) console.error("Cloudinary purge failed ❌:", cloudinaryErr);
-                    else console.log("Cloudinary purge successful: ✅", result);
-                });
-            }
-        }
-
-        // 2. Delete MySQL record
-        const sqlDelete = "DELETE FROM products WHERE id = ?";
-        db.query(sqlDelete, [id], (deleteErr, result) => {
-            if (deleteErr) {
-                console.error(deleteErr);
-                return res.status(500).json({ error: "Could not delete product image from MySQL ❌" });
-            }
-            res.status(200).json({ message: "Product image deleted from MySQL and Cloudinary! 🗑️" });
-        });
-    });
-});
-
-// List of products to guide the AI chatbot
-const PRODUCTS_INFO = [
-  {
-    id: "p1",
-    name: "Cosmograph Daytona Mastercopy",
-    price: 5499.0,
-    category: "Chronograph",
-    description: "Precision Quartz Chronograph featuring a stunning white dial, black sub-dials, scratchproof black Cerachrom bezel, and 40mm Oystersteel premium build.",
-    specs: ["Movement: Precision Japanese Quartz with sweeping seconds", "Dial: Pristine White & Deep Black Chrono Rings", "Diameter: 40mm Oystersteel case", "Bezel: Black scratchproof tachymeter scale"],
-  },
-  {
-    id: "p2",
-    name: "Royal Oak Automatic High Copy",
-    price: 6499.0,
-    category: "Luxury Automatic",
-    description: "Iconic octagonal luxury timepiece with signature steel screws, textured Grande Tapisserie dark-slate dial, and fully automatic custom self-winding sweep.",
-    specs: ["Movement: Calibre 3120 Premium Japanese Automatic sweep", "Dial: Dark-slate waffle texture", "Bezel: Hexagonal steel bezel screws", "Strap: Tapered integrated luxury steel bracelet"],
-  },
-  {
-    id: "p3",
-    name: "Nautilus Blue Dial Mastercopy",
-    price: 5999.0,
-    category: "Luxury Automatic",
-    description: "Elegant rounded octagonal blue dial mastercopy with dynamic embossed horizontal grooves. Finished with scratch-resistant sapphire crystal.",
-    specs: ["Movement: Self-winding 324 SC custom sweep", "Dial: Ocean-blue horizontal gradient", "Glass: Multi-coated Sapphire crystal", "Case: Slim 40mm profile comfort wear"],
-  },
-  {
-    id: "p4",
-    name: "Submariner Date Ceramic Copy",
-    price: 4999.0,
-    category: "Sports Diver",
-    description: "Classic black-ceramic professional diving layout. Heavy Oyster bracelet with glide-lock clasp adjustability and bright-luminous markers.",
-    specs: ["Movement: High-torque automatic with quick-set date", "Dial: Sub-zero deep black gloss", "Bezel: Uni-directional 120-click rotatable ceramic", "Crown: Screw-down triple-lock waterproof simulation"],
-  },
-  {
-    id: "p5",
-    name: "Seamaster 300M Master Plan",
-    price: 4499.0,
-    category: "Sports Diver",
-    description: "Fierce ocean adventure watch with laser-engraved wave design dial, heavy steel skeleton hands, and ultra-comfortable curved black sports strap.",
-    specs: ["Movement: Co-Axial winding high-precision mastercopy", "Dial: Ocean waves design deep pattern", "Bezel: Blue polished ceramic rotatable", "Strap: Solid raw high-density black rubber strap"],
-  },
-  {
-    id: "p6",
-    name: "Classic Roman Heritage Quartz",
-    price: 2999.0,
-    category: "Classic Dress",
-    description: "Retro minimal display watch with vintage Roman numeral index, blued-steel sword hands, ivory white finish, and a textured genuine chocolate brown leather strap.",
-    specs: ["Movement: Slim Japanese quartz dual-hand precision", "Dial: Roman numeral index ivory dial", "Hands: Classic midnight-blue custom steel hands", "Strap: Premium textured brown leather strap with buckle"],
-  }
-];
-
-// Lazy Gemini AI Init
-let aiInstance = null;
-
-function getGeminiClient() {
-  if (aiInstance) return aiInstance;
-
-  const apiKey = process.env.GEMINI_API_KEY;
-  if (!apiKey || apiKey === "MY_GEMINI_API_KEY" || apiKey.trim() === "") {
-    throw new Error("GEMINI_API_KEY_NOT_CONFIGURED");
-  }
-
-  aiInstance = new GoogleGenAI({
-    apiKey: apiKey,
-    httpOptions: {
-      headers: {
-        "User-Agent": "aistudio-build",
-      },
-    },
-  });
-
-  return aiInstance;
-}
-
-const SYSTEM_PROMPT = `You are "Madurai Gadgets AI Guide", a highly polite, friendly, and expert shopping advisor for "Madurai Gadgets 58" - our premium mastercopy watches shop.
-
-Our Catalog:
-${PRODUCTS_INFO.map(p => `- ${p.name} (₹${p.price.toLocaleString("en-IN")}): ${p.description} Subcategory: ${p.category}`).join("\n")}
-
-Personality & Directives:
-1. Warmth & Tone: The user might call you "machan" (a friendly Tamil/Tanglish word for bro/mate) or "da". Reply back warmly! You can say things like "Vanakkam machan! Best mastercopy watches for you!" or "Sure bro, I can help you with that." Keep the Tamil-friendly retail vibe!
-2. Be highly conversational, extremely polite, and concise.
-3. Recommend our best-selling automatic models like "Royal Oak Automatic High Copy" or "Nautilus Blue Dial Mastercopy" for premium design, or "Cosmograph Daytona Mastercopy" for chronographs.
-4. If they negotiate or ask for a discount, happily let them know they can use coupon "MACHAN" for a special 15% discount, or "WELCOME" for 10% discount during checkout.
-5. Keep markdown clean: Use bolding and simple bullet points. Avoid giant heading tags so it fits beautifully in the small chat sidebar. Never stray from our 6 watch options.`;
-
-app.post("/api/chat", async (req, res) => {
-  const { messages } = req.body;
-  if (!messages || !Array.isArray(messages)) {
-    return res.status(400).json({ error: "Invalid messages body format" });
-  }
-
-  try {
-    const ai = getGeminiClient();
-
-    const formattedContents = messages.map((m) => {
-      return {
-        role: m.sender === "user" ? "user" : "model",
-        parts: [{ text: m.text }],
-      };
-    });
-
-    const response = await ai.models.generateContent({
-      model: "gemini-3.5-flash",
-      contents: formattedContents,
-      config: {
-        systemInstruction: SYSTEM_PROMPT,
-        temperature: 0.8,
-      },
-    });
-
-    const botResponseText = response.text || "I am here to guide you, bro. How else can I help today?";
-    res.json({ reply: botResponseText });
-  } catch (error) {
-    console.error("Gemini Assistant Route Error:", error.message);
-
-    const lastUserMessage = messages[messages.length - 1]?.text?.toLowerCase() || "";
-    let fallbackReply = "Vanakkam machan! Welcome to Madurai Gadgets 58. How can I help you find your premium watch today?";
-
-    if (lastUserMessage.includes("discount") || lastUserMessage.includes("coupon") || lastUserMessage.includes("offer") || lastUserMessage.includes("poguma") || lastUserMessage.includes("kammi")) {
-      fallbackReply = "Aama machan! Use coupon code **MACHAN** to get 15% off on your watch order! Or use **WELCOME** for 10% off. Enter it during checkout.";
-    } else if (lastUserMessage.includes("daytona") || lastUserMessage.includes("cosmograph") || lastUserMessage.includes("chrono")) {
-      fallbackReply = "The **Cosmograph Daytona Mastercopy** goes for ₹5,499. It features high-precision Japanese quartz, sweeping seconds, and a premium 40mm Oystersteel bezel. Absolute stunner, bro!";
-    } else if (lastUserMessage.includes("royal") || lastUserMessage.includes("oak") || lastUserMessage.includes("ap")) {
-      fallbackReply = "Our **Royal Oak Automatic High Copy** (₹6,499) showcases the iconic octagonal steel bezel with signature screws and a textured dark waffle dial. Japanese self-winding sweep, pure class, machan!";
-    } else if (lastUserMessage.includes("nautilus") || lastUserMessage.includes("blue dial") || lastUserMessage.includes("patek")) {
-      fallbackReply = "The **Nautilus Blue Dial Mastercopy** is ₹5,999. Elegant rounded octagonal bezel with ocean-blue textured finish, multi-coated sapphire glass, and automatic custom-finish winding.";
-    } else if (lastUserMessage.includes("submariner") || lastUserMessage.includes("rolex") || lastUserMessage.includes("ceramic")) {
-      fallbackReply = "That's our hot **Submariner Date Ceramic Copy** (₹4,999). Deep ceramic rotatable bezel with date magnifier and heavy high-adjust Oyster bracelet. Looks authentic on your wrist!";
-    } else if (lastUserMessage.includes("seamaster") || lastUserMessage.includes("omega") || lastUserMessage.includes("rubber")) {
-      fallbackReply = "The **Seamaster 300M Master Plan** (₹4,499) features laser-engraved waves on the dial and a super durable black sports rubber strap. Perfect blend of tactical and style, bro!";
-    } else if (lastUserMessage.includes("classic") || lastUserMessage.includes("roman") || lastUserMessage.includes("leather") || lastUserMessage.includes("dress")) {
-      fallbackReply = "The **Classic Roman Heritage Quartz** is ₹2,999. Super sleek ivory-white dial with Roman numerals, blued hands, and a chocolate-brown genuine textured leather strap. Pure formal elegance.";
-    } else if (lastUserMessage.includes("hi") || lastUserMessage.includes("hello") || lastUserMessage.includes("bro") || lastUserMessage.includes("machan") || lastUserMessage.includes("da")) {
-      fallbackReply = "Vanakkam machan! Welcome to Madurai Gadgets 58. We have premium custom mastercopy wristwatches (Daytona, AP Royal Oak, Nautilus, Submariner, Seamaster, and Classic Leather). Which one caught your eye?";
-    } else {
-      fallbackReply = "Machan, I can definitely recommend the perfect wristwatch to level up your formal or casual style! We offer free delivery and instant order placement tracking. Let me know if you want detailed specifications for and comparison between any model!";
-    }
-
-    if (error.message === "GEMINI_API_KEY_NOT_CONFIGURED") {
-      fallbackReply += "\n\n*(Note: To connect the live Gemini 3.5 API, please add your real API key in your server environment variables. For now, I'm assisting you with our built-in rules!)*";
-    }
-
-    res.json({ reply: fallbackReply });
-  }
 });
 
 // Basic testing route
