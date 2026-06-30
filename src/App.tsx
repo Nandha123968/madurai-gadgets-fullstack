@@ -542,62 +542,51 @@ Please confirm availability and share GPay/PhonePe QR Code so I can secure it ri
     try {
       const response = await fetch(`${API_BASE_URL}/api/products`);
       if (response.ok) {
-        const data = await response.json();
+        const mysqlData = await response.json();
         
+        // Parallel load from Firebase Firestore
+        let firebaseProducts: Product[] = [];
+        try {
+          firebaseProducts = await fetchProductsFromFirebase();
+        } catch (fbErr) {
+          console.warn("Failed to fetch product details from Firebase:", fbErr);
+        }
+
         // Backend data-va Frontend format-ku maathurom
-        const formattedProducts = data.map((item: any) => {
-          const matchedStaticProduct = ALL_PRODUCTS.find((p) => 
-            p.name.toLowerCase() === item.name.toLowerCase() || 
-            p.id === item.id.toString() ||
-            p.id === `p-watch-dyn-${item.id}` ||
-            p.id === `p-sunglass-dyn-${item.id}`
-          );
+        const formattedProducts = mysqlData.map((mysqlItem: any) => {
+          const fbItem = firebaseProducts.find((p) => p.id === mysqlItem.id.toString());
+          const matchedStaticProduct = ALL_PRODUCTS.find((p) => p.id === mysqlItem.id.toString());
 
-          // Resolve specs from array, technical_specifications string, or multiline description
+          const finalName = fbItem?.name || matchedStaticProduct?.name || `Watch #${mysqlItem.id}`;
+          const finalPrice = fbItem?.price || matchedStaticProduct?.price || 4999;
+          const finalDesc = fbItem?.description || matchedStaticProduct?.description || "A+ Quality premium wrist watch copy.";
+          const finalCategory = fbItem?.category || matchedStaticProduct?.category || "Premier Watches";
+          const finalGender = fbItem?.gender || matchedStaticProduct?.gender || "Unisex";
+          const finalStock = fbItem?.stock ?? matchedStaticProduct?.stock ?? 10;
+          const finalVariations = fbItem?.variations || matchedStaticProduct?.variations || [];
+          
           let parsedSpecs: string[] = [];
-          if (item.specs) {
-            if (Array.isArray(item.specs)) {
-              parsedSpecs = item.specs;
-            } else if (typeof item.specs === "string") {
-              parsedSpecs = item.specs.split("\n").map((s: string) => s.trim()).filter((s: string) => s.length > 0);
-            }
-          } else if (item.technical_specifications) {
-            if (Array.isArray(item.technical_specifications)) {
-              parsedSpecs = item.technical_specifications;
-            } else if (typeof item.technical_specifications === "string") {
-              parsedSpecs = item.technical_specifications.split("\n").map((s: string) => s.trim()).filter((s: string) => s.length > 0);
-            }
-          }
-
-          // Fallback to splitting product description if it has newlines
-          if (parsedSpecs.length === 0 && item.description && item.description.includes("\n")) {
-            parsedSpecs = item.description.split("\n").map((s: string) => s.trim()).filter((s: string) => s.length > 0);
-          }
-
-          // Fallback to static product specifications
-          if (parsedSpecs.length === 0 && matchedStaticProduct && matchedStaticProduct.specs) {
+          if (fbItem?.specs) {
+            parsedSpecs = Array.isArray(fbItem.specs) ? fbItem.specs : fbItem.specs;
+          } else if (matchedStaticProduct?.specs) {
             parsedSpecs = matchedStaticProduct.specs;
-          }
-
-          // Ultimate default specs
-          if (parsedSpecs.length === 0) {
+          } else {
             parsedSpecs = ["Premium Quality Mastercopy", "Complete UV Protection Glass", "High Grade Solid Build"];
           }
 
           return {
-            id: item.id.toString(),
-            name: item.name,
-            price: Number(item.price),
-            description: item.description,
-            image: item.image_url ? item.image_url.replace(/^http:\/\//i, "https://") : item.image_url,
-            // Kela irukkura values ellam UI break aagama irukka default-ah tharrom
-            rating: matchedStaticProduct?.rating || 4.8, 
-            reviewsCount: matchedStaticProduct?.reviewsCount || 150,
-            category: item.category || matchedStaticProduct?.category || "Sunglasses", 
-            gender: item.gender || matchedStaticProduct?.gender || "Unisex",
+            id: mysqlItem.id.toString(),
+            name: finalName,
+            price: Number(finalPrice),
+            description: finalDesc,
+            image: mysqlItem.image_url ? mysqlItem.image_url.replace(/^http:\/\//i, "https://") : mysqlItem.image_url,
+            rating: fbItem?.rating || matchedStaticProduct?.rating || 4.8, 
+            reviewsCount: fbItem?.reviewsCount || matchedStaticProduct?.reviewsCount || 150,
+            category: finalCategory, 
+            gender: finalGender,
             specs: parsedSpecs,
-            stock: item.stock || matchedStaticProduct?.stock || 15,
-            variations: item.variations || matchedStaticProduct?.variations || []
+            stock: finalStock,
+            variations: finalVariations
           };
         });
         
@@ -3119,30 +3108,37 @@ My order is registered in the tracker with reference *${orderId}*. Thank you! ðŸ
                       return;
                     }
 
-                    // 1. MySQL-ku thevayana data mattum edukurom
-                    const newProductData = {
-                      name: newWatchName,
-                      price: Number(newWatchPrice),
-                      description: newWatchDescription,
-                      image_url: newWatchImage, // Inga thaan namma Cloudinary URL vara poguthu
-                      category: newWatchCategory,
-                      brand: newWatchBrand,
-                      stock: newWatchStock,
-                      specs: newWatchSpecs,
-                      gender: newWatchGender,
-                      variations: variationsInput
-                    };
-
                     try {
-                      // 2. Node.js Backend-ku anuppurom
+                      // 1. Send only image_url to MySQL backend
                       const response = await fetch(`${API_BASE_URL}/api/products`, {
                         method: 'POST',
                         headers: { 'Content-Type': 'application/json' },
-                        body: JSON.stringify(newProductData)
+                        body: JSON.stringify({ image_url: newWatchImage })
                       });
 
                       if (response.ok) {
-                        triggerToast(`Mass! "${newWatchName}" Database-la Add Aagiduchu! ðŸš€`, "success");
+                        const result = await response.json();
+                        const generatedId = result.productId.toString();
+
+                        // 2. Save metadata details in Firebase Firestore using generated ID
+                        const fbProduct: Product = {
+                          id: generatedId,
+                          name: newWatchName,
+                          price: Number(newWatchPrice),
+                          description: newWatchDescription,
+                          image: newWatchImage,
+                          category: newWatchCategory,
+                          gender: newWatchGender,
+                          specs: newWatchSpecs.split("\n").map(s => s.trim()).filter(s => s.length > 0),
+                          stock: newWatchStock,
+                          variations: variationsInput,
+                          rating: 4.8,
+                          reviewsCount: 150
+                        };
+
+                        await saveProductToFirebase(fbProduct);
+
+                        triggerToast(`Mass! "${newWatchName}" saved (MySQL image + Firebase details)! ðŸš€`, "success");
                         
                         // 3. Save aanathum list-ah automatic ah refresh panrom
                         fetchProductsFromNodeBackend();
@@ -3794,12 +3790,13 @@ My order is registered in the tracker with reference *${orderId}*. Thank you! ðŸ
                                 onClick={async () => {
                                   if (confirm(`Are you sure you want to delete "${prod.name}" permanently from the live catalog?`)) {
                                     const isNumericId = /^\d+$/.test(prod.id);
-                                    if (isNumericId) {
-                                      try {
+                                    try {
+                                      if (isNumericId) {
                                         await fetch(`${API_BASE_URL}/api/products/${prod.id}`, { method: "DELETE" });
-                                      } catch (err) {
-                                        console.error(err);
                                       }
+                                      await deleteProductFromFirebase(prod.id);
+                                    } catch (err) {
+                                      console.error("Error deleting product:", err);
                                     }
                                     const updated = products.filter(p => p.id !== prod.id);
                                     setProducts(updated);
@@ -3923,14 +3920,15 @@ My order is registered in the tracker with reference *${orderId}*. Thank you! ðŸ
                                         onClick={async () => {
                                           if (confirm(`Are you sure you want to delete "${prod.name}" permanently from the live catalog?`)) {
                                             const isNumericId = /^\d+$/.test(prod.id);
-                                            if (isNumericId) {
-                                              try {
+                                            try {
+                                              if (isNumericId) {
                                                 await fetch(`${API_BASE_URL}/api/products/${prod.id}`, {
                                                   method: "DELETE"
                                                 });
-                                              } catch (err) {
-                                                console.error("Error deleting from backend database:", err);
                                               }
+                                              await deleteProductFromFirebase(prod.id);
+                                            } catch (err) {
+                                              console.error("Error deleting from database/Firebase:", err);
                                             }
                                             const updated = products.filter(p => p.id !== prod.id);
                                             setProducts(updated);
@@ -4443,29 +4441,20 @@ My order is registered in the tracker with reference *${orderId}*. Thank you! ðŸ
                 onClose={() => setEditingProduct(null)}
                 onSave={async (updatedProduct) => {
                   const isNumericId = /^\d+$/.test(updatedProduct.id);
-                  if (isNumericId) {
-                    try {
-                      const response = await fetch(`${API_BASE_URL}/api/products/${updatedProduct.id}`, {
+                  try {
+                    if (isNumericId) {
+                      // 1. Update image link in MySQL
+                      await fetch(`${API_BASE_URL}/api/products/${updatedProduct.id}`, {
                         method: "PUT",
                         headers: { "Content-Type": "application/json" },
-                        body: JSON.stringify({
-                          name: updatedProduct.name,
-                          price: updatedProduct.price,
-                          description: updatedProduct.description,
-                          image_url: updatedProduct.image,
-                          category: updatedProduct.category,
-                          stock: updatedProduct.stock,
-                          specs: updatedProduct.specs,
-                          gender: updatedProduct.gender
-                        })
+                        body: JSON.stringify({ image_url: updatedProduct.image })
                       });
-                      if (!response.ok) {
-                        throw new Error("Backend update failed");
-                      }
-                    } catch (err) {
-                      console.error("Error updating product in backend database:", err);
-                      triggerToast("Error updating in backend database, saved locally instead!", "info");
                     }
+                    // 2. Save metadata details to Firebase Firestore
+                    await saveProductToFirebase(updatedProduct);
+                  } catch (err) {
+                    console.error("Error updating product:", err);
+                    triggerToast("Error updating database product details!", "info");
                   }
 
                   const updatedList = products.map((p) => (p.id === updatedProduct.id ? updatedProduct : p));
