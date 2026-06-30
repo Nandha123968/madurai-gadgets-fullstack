@@ -4804,25 +4804,36 @@ My order is registered in the tracker with reference *${orderId}*. Thank you! ðŸ
               if (upsellPicks.length === 0) return null;
 
               return (
-                <div className="pt-5 border-t border-zinc-200 mt-2 space-y-3 font-sans w-full">
-                  <div className="flex items-center gap-1.5">
-                    <Sparkles className="w-3.5 h-3.5 text-yellow-500 shrink-0" />
-                    <span className="text-[10px] font-mono font-bold text-zinc-500 uppercase tracking-widest leading-none">
-                      ðŸ”¥ Upgrade Your Style: Premium Picks You Might Love
+                <motion.div
+                  initial={{ opacity: 0, y: 15 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ delay: 0.2, duration: 0.5 }}
+                  className="pt-5 border-t border-zinc-200 mt-2 space-y-3 font-sans w-full"
+                >
+                  <div className="flex items-center gap-1.5 select-none">
+                    <Sparkles className="w-3.5 h-3.5 text-amber-500 animate-pulse" />
+                    <span className="text-[10px] font-sans font-black text-zinc-500 uppercase tracking-widest leading-none">
+                      Upgrade Your Style: Premium Picks You Might Love
                     </span>
+                    <TrendingUp className="w-3.5 h-3.5 text-emerald-500" />
                   </div>
                   <div className="grid grid-cols-3 gap-3">
-                    {upsellPicks.map((pick) => (
-                      <button
+                    {upsellPicks.map((pick, index) => (
+                      <motion.button
                         key={pick.id}
+                        initial={{ opacity: 0, y: 10 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        transition={{ delay: 0.3 + index * 0.1, duration: 0.4 }}
+                        whileHover={{ scale: 1.04, y: -2 }}
+                        whileTap={{ scale: 0.98 }}
                         onClick={() => {
                           setDetailedProduct(pick); // change modal focus
                           setActiveDetailImage(null); // reset variant selection
                         }}
-                        className="group border border-zinc-200 hover:border-yellow-500 p-2 text-left bg-zinc-50 hover:bg-white rounded transition-all flex flex-col justify-between items-stretch cursor-pointer select-none"
+                        className="group border border-zinc-200 hover:border-yellow-500 p-2 text-left bg-zinc-50 hover:bg-white rounded transition-all flex flex-col justify-between items-stretch cursor-pointer select-none shadow-xs hover:shadow-md"
                       >
                         <div className="h-16 sm:h-20 bg-transparent flex items-center justify-center p-0.5 overflow-hidden">
-                          {renderProductIllustration(pick.image, "h-full", 150)}
+                          {renderProductIllustration(pick.image, "h-full transition-transform duration-300 group-hover:scale-110", 150)}
                         </div>
                         <div className="mt-1 min-w-0">
                           <h4 className="font-bold text-[9px] sm:text-[10px] text-zinc-800 truncate leading-tight group-hover:text-yellow-600">
@@ -4837,10 +4848,10 @@ My order is registered in the tracker with reference *${orderId}*. Thank you! ðŸ
                             </span>
                           </div>
                         </div>
-                      </button>
+                      </motion.button>
                     ))}
                   </div>
-                </div>
+                </motion.div>
               );
             })()}
           </motion.div>
