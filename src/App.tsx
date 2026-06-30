@@ -5008,13 +5008,13 @@ My order is registered in the tracker with reference *${orderId}*. Thank you! �
                             <p className="text-[10px] font-mono font-bold tracking-wider text-zinc-500 uppercase">Scan to Pay via UPI</p>
                             <div className="space-y-3">
                               <a
-                                href={`upi://pay?pa=dineshdev5227-2@okhdfcbank&pn=Dinesh%20DV`}
+                                href={`upi://pay?pa=dineshdev5227-2@okhdfcbank&pn=Dinesh%20DV&am=${cartTotal}&cu=INR&tn=Madurai%20Gadgets%20Order`}
                                 className="inline-block p-2 bg-white border border-zinc-200 shadow-xs hover:border-yellow-500 hover:ring-1 hover:ring-yellow-500 transition-all rounded-sm"
                                 title="Click to Pay directly via App (GPay/PhonePe)"
                               >
                                 <img
                                   src={`https://api.qrserver.com/v1/create-qr-code/?size=180x180&data=${encodeURIComponent(
-                                    `upi://pay?pa=dineshdev5227-2@okhdfcbank&pn=Dinesh%20DV`
+                                    `upi://pay?pa=dineshdev5227-2@okhdfcbank&pn=Dinesh%20DV&am=${cartTotal}&cu=INR&tn=Madurai%20Gadgets%20Order`
                                   )}`}
                                   alt="UPI Payment QR Code"
                                   className="w-44 h-44 object-contain mx-auto"
@@ -5025,7 +5025,7 @@ My order is registered in the tracker with reference *${orderId}*. Thank you! �
                               
                               <div>
                                 <a
-                                  href={`upi://pay?pa=dineshdev5227-2@okhdfcbank&pn=Dinesh%20DV`}
+                                  href={`upi://pay?pa=dineshdev5227-2@okhdfcbank&pn=Dinesh%20DV&am=${cartTotal}&cu=INR&tn=Madurai%20Gadgets%20Order`}
                                   className="inline-flex items-center justify-center gap-1.5 px-4 py-2 bg-yellow-450 hover:bg-yellow-500 text-gray-950 font-black uppercase text-[10px] tracking-wider rounded-sm text-center shadow-xs transition-all w-44 mx-auto font-mono active:scale-95 duration-200"
                                 >
                                   ⚡ Pay Directly via App
@@ -5041,7 +5041,7 @@ My order is registered in the tracker with reference *${orderId}*. Thank you! �
                             <p className="text-[10px] font-mono text-zinc-500 leading-relaxed">
                               👉 Scan the QR using GPay, PhonePe, Paytm, or BHIM. Or transfer directly to UPI ID: <strong className="text-zinc-950 font-bold select-all">dineshdev5227-2@okhdfcbank</strong> or Number: <strong className="text-zinc-950 font-bold select-all">9688616838</strong>.
                               <br />
-                              <span className="text-amber-600 font-bold">⚠️ Note: Enter the amount manually inside GPay/PhonePe to complete the transfer!</span>
+                              <span className="text-emerald-600 font-bold">🎉 Success: Scanning this QR will automatically pre-fill the order amount of ₹{cartTotal.toLocaleString("en-IN")}!</span>
                             </p>
                             <div className="p-2.5 bg-white border border-zinc-200 rounded-sm text-[10px] space-y-1 text-zinc-650 font-mono">
                               <p className="font-bold text-zinc-800">🏦 Bank Transfer Details:</p>
