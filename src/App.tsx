@@ -1044,8 +1044,21 @@ My order is registered in the tracker with reference *${orderId}*. Thank you! ðŸ
 
   // Visual Product Vector Mock Art Renderer (To keep look premium & avoid external generic image links)
   const renderProductIllustration = (imageKey: string, sizeClass: string = "h-40", imgWidth: number = 600) => {
-    if (imageKey && (imageKey.startsWith("data:") || imageKey.startsWith("http://") || imageKey.startsWith("https://"))) {
-      const optimizedUrl = optimizeImageUrl(imageKey, imgWidth);
+    // Proactive mapping of static keys to actual imported JPEGs
+    let resolvedSrc = imageKey;
+    if (imageKey === "daytona") resolvedSrc = rolexDaytonaGoldImg;
+    else if (imageKey === "royaloak") resolvedSrc = apRoyalOakSkeletonImg;
+    else if (imageKey === "nautilus") resolvedSrc = patekNautilusBlueImg;
+
+    if (resolvedSrc && (
+      resolvedSrc.startsWith("/") ||
+      resolvedSrc.startsWith("data:") || 
+      resolvedSrc.startsWith("http://") || 
+      resolvedSrc.startsWith("https://") ||
+      resolvedSrc.includes("assets/") ||
+      resolvedSrc.includes("static/")
+    )) {
+      const optimizedUrl = optimizeImageUrl(resolvedSrc, imgWidth);
       return (
         <div className={`w-full ${sizeClass} bg-transparent rounded-none relative flex items-center justify-center overflow-hidden`}>
           <motion.img
