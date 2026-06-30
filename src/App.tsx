@@ -1669,7 +1669,7 @@ My order is registered in the tracker with reference *${orderId}*. Thank you! ðŸ
                 <div className="flex items-center gap-2">
                   <ShieldCheck className="w-4 h-4 text-yellow-500 shrink-0" />
                   <div>
-                    <p className="font-bold text-zinc-800 uppercase tracking-wider text-[10px]">3-6 Months Warranty</p>
+                    <p className="font-bold text-zinc-800 uppercase tracking-wider text-[10px]">6-12 Months Warranty</p>
                     <p className="text-[10px] text-zinc-500">Covers machine sweep & battery</p>
                   </div>
                 </div>
@@ -2141,7 +2141,7 @@ My order is registered in the tracker with reference *${orderId}*. Thank you! ðŸ
                 <div className="grid grid-cols-2 sm:grid-cols-2 lg:grid-cols-3 gap-3 sm:gap-8">
                   {visibleProducts.map((product) => {
                     const isLowStock = product.stock <= 5;
-                    const marketPrice = Math.round(product.price * 2.22);
+                    const marketPrice = Math.round(product.price / 0.88);
                     const discountPercentage = Math.round(((marketPrice - product.price) / marketPrice) * 100);
                     
                     return (
@@ -4665,7 +4665,7 @@ My order is registered in the tracker with reference *${orderId}*. Thank you! ðŸ
                 <div className="bg-zinc-50 p-4 rounded-sm border border-zinc-200 space-y-2.5 text-zinc-500 font-sans text-xs">
                   <div className="flex items-center gap-2">
                     <ShieldCheck className="w-4 h-4 text-zinc-500 shrink-0" />
-                    <span className="font-semibold text-zinc-850">3 to 6 Months Warranty</span>
+                    <span className="font-semibold text-zinc-850">6 to 12 Months Warranty</span>
                   </div>
                   <div className="flex items-center gap-2">
                     <RotateCcw className="w-4 h-4 text-zinc-500 shrink-0" />

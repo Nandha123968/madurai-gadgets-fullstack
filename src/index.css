@@ -35,8 +35,16 @@
   animation: softPulse 3s infinite ease-in-out;
 }
 
+:root {
+  color-scheme: light !important;
+}
+
+video {
+  background-color: #ffffff !important;
+}
+
 body {
-  background-color: #f8f9fa;
+  background-color: #ffffff;
   color: #18181b;
 }
 
