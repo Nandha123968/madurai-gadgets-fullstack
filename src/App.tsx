@@ -1615,7 +1615,7 @@ My order is registered in the tracker with reference *${orderId}*. Thank you! ðŸ
                   initial={{ opacity: 0, y: 12 }}
                   animate={{ opacity: 1, y: 0 }}
                   transition={{ delay: 0.6, duration: 0.6 }}
-                  className="flex flex-wrap justify-center items-center gap-3 sm:gap-4"
+                  className="flex flex-wrap justify-center items-center gap-3 sm:gap-4 mt-6 sm:mt-8"
                 >
                   <button
                     onClick={() => {
