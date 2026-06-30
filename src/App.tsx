@@ -589,7 +589,18 @@ Please confirm availability and share GPay/PhonePe QR Code so I can secure it ri
           if (!finalPrice) finalPrice = 4999;
           if (!finalDesc) finalDesc = "A+ Quality premium wrist watch copy.";
 
-          const finalGender = fbItem?.gender || matchedStaticProduct?.gender || "Unisex";
+          // Determine target gender with keyword fallbacks for custom uploads
+          let finalGender = fbItem?.gender || matchedStaticProduct?.gender;
+          if (!finalGender) {
+            const nameLower = finalName.toLowerCase();
+            if (nameLower.includes("ladies") || nameLower.includes("women") || nameLower.includes("girl") || nameLower.includes("female")) {
+              finalGender = "Women";
+            } else if (nameLower.includes("men") || nameLower.includes("boy") || nameLower.includes("male")) {
+              finalGender = "Men";
+            } else {
+              finalGender = "Unisex";
+            }
+          }
           const finalStock = fbItem?.stock ?? matchedStaticProduct?.stock ?? 10;
           const finalVariations = fbItem?.variations || matchedStaticProduct?.variations || [];
           
