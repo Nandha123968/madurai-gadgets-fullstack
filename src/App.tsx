@@ -557,10 +557,37 @@ Please confirm availability and share GPay/PhonePe QR Code so I can secure it ri
           const fbItem = firebaseProducts.find((p) => p.id === mysqlItem.id.toString());
           const matchedStaticProduct = ALL_PRODUCTS.find((p) => p.id === mysqlItem.id.toString());
 
-          const finalName = fbItem?.name || matchedStaticProduct?.name || `Watch #${mysqlItem.id}`;
-          const finalPrice = fbItem?.price || matchedStaticProduct?.price || 4999;
-          const finalDesc = fbItem?.description || matchedStaticProduct?.description || "A+ Quality premium wrist watch copy.";
-          const finalCategory = fbItem?.category || matchedStaticProduct?.category || "Premier Watches";
+          let finalName = fbItem?.name || matchedStaticProduct?.name;
+          let finalPrice = fbItem?.price || matchedStaticProduct?.price;
+          let finalDesc = fbItem?.description || matchedStaticProduct?.description;
+          let finalCategory = fbItem?.category || matchedStaticProduct?.category || "Premier Watches";
+
+          // Proactive image URL fallback matching for transition uploads
+          if (!finalName && mysqlItem.image_url) {
+            const urlLower = mysqlItem.image_url.toLowerCase();
+            if (urlLower.includes("guss")) {
+              finalName = "GUSS PREMIUM LADIES WATCH";
+              finalPrice = 1999;
+              finalDesc = "Elegant triangular dial luxury ladies fashion watch copy.";
+              finalCategory = "Premier Watches";
+            } else if (urlLower.includes("fossil")) {
+              finalName = "FOSSIL PREMIUM LADIES WATCH";
+              finalPrice = 1999;
+              finalDesc = "Stunning rose-gold fashion ladies watch copy.";
+              finalCategory = "Premier Watches";
+            } else if (urlLower.includes("michael") || urlLower.includes("kors")) {
+              finalName = "MICHAEL KORS LADIES WATCH";
+              finalPrice = 1999;
+              finalDesc = "Premium luxury ladies watch copy with elegant styling.";
+              finalCategory = "Premier Watches";
+            }
+          }
+
+          // Ultimate default value fallbacks
+          if (!finalName) finalName = `Watch #${mysqlItem.id}`;
+          if (!finalPrice) finalPrice = 4999;
+          if (!finalDesc) finalDesc = "A+ Quality premium wrist watch copy.";
+
           const finalGender = fbItem?.gender || matchedStaticProduct?.gender || "Unisex";
           const finalStock = fbItem?.stock ?? matchedStaticProduct?.stock ?? 10;
           const finalVariations = fbItem?.variations || matchedStaticProduct?.variations || [];
