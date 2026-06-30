@@ -5368,6 +5368,30 @@ My order is registered in the tracker with reference *${orderId}*. Thank you! �
                   >
                     Close Slip
                   </button>
+                  
+                  <button
+                    type="button"
+                    onClick={() => {
+                      if (!printingOrder) return;
+                      const ord = printingOrder;
+                      const itemsText = ord.items
+                        .map((item) => `• ${item.name} (Qty: ${item.quantity}) - ₹${item.price.toLocaleString("en-IN")}`)
+                        .join("\n");
+                      
+                      const whatsappMsg = `*MADURAI GADGETS 58 - OFFICIAL DIGITAL RECEIPT* 📜\n--------------------------------------\nVanakkam Machan! Here is your official order invoice verification receipt!\n\n*CUSTOMER DETAILS:*\n👤 *Name:* ${ord.shipping.fullName}\n📞 *Phone:* ${ord.shipping.phone || "Not specified"}\n📍 *Address:* ${ord.shipping.address}, ${ord.shipping.city} - ${ord.shipping.zipCode}\n\n*ORDER DETAILS:*\n🆔 *Invoice ID:* ${ord.id}\n📅 *Date:* ${ord.date}\n💵 *Payment Status:* ${ord.paymentStatus.toUpperCase()}\n\n--------------------------------------\n*ITEMS PURCHASED:*\n${itemsText}\n\n💰 *GRAND TOTAL:* ₹${ord.total.toLocaleString("en-IN")}\n--------------------------------------\nThank you for shopping with Madurai Gadgets 58! Wear Peak, Master Your Style! ☄️✨`;
+                      
+                      const cleanPhone = ord.shipping.phone ? ord.shipping.phone.replace(/\D/g, "") : "";
+                      const targetPhone = cleanPhone.length === 10 ? `91${cleanPhone}` : cleanPhone;
+                      
+                      const url = `https://wa.me/${targetPhone}?text=${encodeURIComponent(whatsappMsg)}`;
+                      window.open(url, "_blank");
+                    }}
+                    className="px-5 py-2 bg-emerald-500 hover:bg-emerald-600 text-white text-xs font-black uppercase tracking-wider rounded-sm transition-all cursor-pointer flex items-center gap-1.5"
+                  >
+                    <MessageSquare className="w-4 h-4 shrink-0" />
+                    Send via WhatsApp
+                  </button>
+
                   <button
                     type="button"
                     onClick={() => window.print()}
