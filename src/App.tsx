@@ -1610,15 +1610,6 @@ My order is registered in the tracker with reference *${orderId}*. Thank you! ðŸ
                   </motion.h1>
                 </div>
  
-                <motion.p 
-                  initial={{ opacity: 0, y: 12 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  transition={{ delay: 0.45, duration: 0.6 }}
-                  className="text-zinc-650 text-xs sm:text-sm leading-relaxed max-w-lg font-sans font-medium mx-auto"
-                >
-                  premium mastercopy watches with first class premium design at affordable price. Grab custom automatic, luxury chronograph, and sport diving watch copies.
-                </motion.p>
- 
                 <motion.div 
                   initial={{ opacity: 0, y: 12 }}
                   animate={{ opacity: 1, y: 0 }}
@@ -1632,20 +1623,6 @@ My order is registered in the tracker with reference *${orderId}*. Thank you! ðŸ
                     className="px-6 py-3 sm:px-10 sm:py-4 bg-yellow-400 hover:bg-yellow-500 text-gray-950 text-[10px] sm:text-[11px] uppercase tracking-[0.15em] sm:tracking-[0.2em] font-black transition-all shadow-md cursor-pointer hover:scale-102 active:scale-95"
                   >
                     Explore Collection
-                  </button>
-                  <button
-                    onClick={() => {
-                      setCouponCode("MACHAN");
-                      setDiscountPercent(15);
-                      setCouponFeedback({
-                        msg: "Promo code loaded! Open your cart drawer to see it.",
-                        success: true
-                      });
-                      triggerToast("Discount loaded: MACHAN (15% Off)", "success");
-                    }}
-                    className="px-5 py-3 sm:px-8 sm:py-4 bg-white text-zinc-700 hover:text-yellow-600 border border-zinc-250 hover:border-yellow-500 transition-all rounded-none text-[10px] sm:text-[11px] uppercase tracking-[0.15em] sm:tracking-[0.2em] font-black cursor-pointer shadow-sm hover:bg-zinc-50 hover:scale-102 active:scale-95"
-                  >
-                    Load Coupon (15% Off)
                   </button>
                 </motion.div>
               </motion.div>
@@ -4847,33 +4824,7 @@ My order is registered in the tracker with reference *${orderId}*. Thank you! ðŸ
                     </div>
                   )}
 
-                  {/* Promo Vouchers Form */}
-                  {cart.length > 0 && (
-                    <div className="pt-6 border-t border-zinc-200 space-y-3 font-light">
-                      <p className="font-mono text-[9px] font-bold tracking-[0.25em] text-zinc-500 uppercase">Apply Promo Vouchment</p>
-                      <div className="flex gap-2">
-                        <input
-                          type="text"
-                          placeholder="Try code 'MACHAN'"
-                          value={couponCode}
-                          onChange={(e) => setCouponCode(e.target.value)}
-                          className="flex-1 px-3 py-1.5 bg-zinc-50 border border-zinc-200 rounded-full text-xs font-semibold text-zinc-900 placeholder-zinc-400 focus:outline-none focus:ring-1 focus:ring-zinc-300 uppercase"
-                        />
-                        <button
-                          onClick={validatePromoCode}
-                          className="px-4 py-1.5 bg-zinc-900 text-white hover:bg-zinc-800 rounded-full text-xs font-bold uppercase tracking-widest transition-all cursor-pointer shrink-0 shadow-sm"
-                        >
-                          Apply
-                        </button>
-                      </div>
 
-                      {couponFeedback && (
-                        <p className={`text-[11px] font-mono ${couponFeedback.success ? "text-emerald-600" : "text-rose-600"}`}>
-                          {couponFeedback.msg}
-                        </p>
-                      )}
-                    </div>
-                  )}
 
                   {/* Interactive Shipping Address Submission form */}
                   {cart.length > 0 && (
