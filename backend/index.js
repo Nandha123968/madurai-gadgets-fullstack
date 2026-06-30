@@ -34,29 +34,32 @@ db.getConnection((err, connection) => {
         console.log('MySQL Database Connected Successfully via Pool! 🔥');
         connection.release();
         
-        // Image-only schema query
+        // Full schema query
         const createTableQuery = `
             CREATE TABLE IF NOT EXISTS products (
                 id INT AUTO_INCREMENT PRIMARY KEY,
+                name VARCHAR(255) NOT NULL,
+                price DECIMAL(10, 2) NOT NULL,
+                description TEXT,
                 image_url VARCHAR(500) NOT NULL,
                 created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
             )
         `;
 
-        // Check if old multi-column schema is present, if so migrate to clean schema
+        // Revert to full schema if name column is missing
         db.query("SHOW COLUMNS FROM products LIKE 'name'", (err, rows) => {
-            if (!err && rows && rows.length > 0) {
-                console.log("Old multi-column MySQL schema detected. Dropping table to migrate to image-only schema...");
+            if (!err && (!rows || rows.length === 0)) {
+                console.log("Image-only MySQL schema detected. Re-creating table with full metadata schema...");
                 db.query("DROP TABLE products", (dropErr) => {
                     db.query(createTableQuery, (createErr) => {
                         if (createErr) console.error('Table recreate failed ❌:', createErr);
-                        else console.log('Products Table recreated successfully with image-only schema! 📦');
+                        else console.log('Products Table recreated successfully with full metadata schema! 📦');
                     });
                 });
             } else {
                 db.query(createTableQuery, (createErr) => {
                     if (createErr) console.error('Table create failed ❌:', createErr);
-                    else console.log('Products Table Ready with image-only schema! 📦');
+                    else console.log('Products Table Ready with full metadata schema! 📦');
                 });
             }
         });
@@ -77,61 +80,46 @@ console.log('Cloudinary Configured! ☁️');
 // 3. E-Commerce API Routes
 // ==========================================
 
-// Route 1: Puthu Product-ah Add panna (POST - stores only image link)
+// Route 1: Puthu Product-ah Add panna (POST - stores full product data in MySQL)
 app.post('/api/products', (req, res) => {
-    const { image_url } = req.body;
+    const { name, price, description, image_url } = req.body;
 
-    const sqlInsert = "INSERT INTO products (image_url) VALUES (?)";
-    db.query(sqlInsert, [image_url], (err, result) => {
+    const sqlInsert = "INSERT INTO products (name, price, description, image_url) VALUES (?, ?, ?, ?)";
+    db.query(sqlInsert, [name, price, description, image_url], (err, result) => {
         if (err) {
             console.error(err);
-            return res.status(500).json({ error: "Product image save failed in MySQL ❌" });
+            return res.status(500).json({ error: "Product save failed in MySQL ❌" });
         }
-        res.status(201).json({ message: "Product image link saved in MySQL! 📦", productId: result.insertId });
+        res.status(201).json({ message: "Product saved in MySQL! 📦", productId: result.insertId });
     });
 });
 
-// Route 2: Ellam Product image links-aiyum Edukka (GET)
+// Route 2: Ellam Products-aiyum Edukka (GET - retrieves full metadata)
 app.get('/api/products', (req, res) => {
-    const sqlSelect = "SELECT id, image_url FROM products";
+    const sqlSelect = "SELECT * FROM products";
     db.query(sqlSelect, (err, results) => {
         if (err) {
             console.error(err);
-            return res.status(500).json({ error: "Could not fetch product image links from MySQL" });
+            return res.status(500).json({ error: "Could not fetch products from MySQL" });
         }
         res.status(200).json(results);
     });
 });
 
-// Route 3: Product details edit update (PUT - updates image in MySQL)
+// Route 3: Product details edit update (PUT - updates full metadata in MySQL)
 app.put('/api/products/:id', (req, res) => {
     const { id } = req.params;
-    const { image_url } = req.body;
+    const { name, price, description, image_url } = req.body;
 
-    const sqlUpdate = "UPDATE products SET image_url = ? WHERE id = ?";
-    db.query(sqlUpdate, [image_url, id], (err, result) => {
+    const sqlUpdate = "UPDATE products SET name = ?, price = ?, description = ?, image_url = ? WHERE id = ?";
+    db.query(sqlUpdate, [name, price, description, image_url, id], (err, result) => {
         if (err) {
             console.error(err);
-            return res.status(500).json({ error: "Could not update product image in MySQL ❌" });
+            return res.status(500).json({ error: "Could not update product in MySQL ❌" });
         }
-        res.status(200).json({ message: "Product image updated in MySQL! ✅" });
+        res.status(200).json({ message: "Product updated in MySQL! ✅" });
     });
 });
-
-// Helper function to extract Cloudinary public ID from a URL
-function getCloudinaryPublicId(url) {
-    if (!url || !url.includes("res.cloudinary.com")) return null;
-    try {
-        const parts = url.split("/upload/");
-        if (parts.length < 2) return null;
-        const relativePath = parts[1].replace(/^v\d+\//, ""); // remove version directory
-        const dotIndex = relativePath.lastIndexOf(".");
-        if (dotIndex === -1) return relativePath;
-        return relativePath.substring(0, dotIndex); // extract base filename
-    } catch (e) {
-        return null;
-    }
-}
 
 // Route 4: Product deletion (DELETE - removes image row from MySQL and deletes from Cloudinary)
 app.delete('/api/products/:id', (req, res) => {

@@ -557,9 +557,10 @@ Please confirm availability and share GPay/PhonePe QR Code so I can secure it ri
           const fbItem = firebaseProducts.find((p) => p.id === mysqlItem.id.toString());
           const matchedStaticProduct = ALL_PRODUCTS.find((p) => p.id === mysqlItem.id.toString());
 
-          let finalName = fbItem?.name || matchedStaticProduct?.name;
-          let finalPrice = fbItem?.price || matchedStaticProduct?.price;
-          let finalDesc = fbItem?.description || matchedStaticProduct?.description;
+          // Load text fields from MySQL database first, then Firebase, then static fallback
+          let finalName = mysqlItem.name || fbItem?.name || matchedStaticProduct?.name;
+          let finalPrice = mysqlItem.price || fbItem?.price || matchedStaticProduct?.price;
+          let finalDesc = mysqlItem.description || fbItem?.description || matchedStaticProduct?.description;
           let finalCategory = fbItem?.category || matchedStaticProduct?.category || "Premier Watches";
 
           // Proactive image URL fallback matching for transition uploads
@@ -3136,11 +3137,16 @@ My order is registered in the tracker with reference *${orderId}*. Thank you! ðŸ
                     }
 
                     try {
-                      // 1. Send only image_url to MySQL backend
+                      // 1. Send full metadata to MySQL backend
                       const response = await fetch(`${API_BASE_URL}/api/products`, {
                         method: 'POST',
                         headers: { 'Content-Type': 'application/json' },
-                        body: JSON.stringify({ image_url: newWatchImage })
+                        body: JSON.stringify({
+                          name: newWatchName,
+                          price: Number(newWatchPrice),
+                          description: newWatchDescription,
+                          image_url: newWatchImage
+                        })
                       });
 
                       if (response.ok) {
@@ -4482,11 +4488,16 @@ My order is registered in the tracker with reference *${orderId}*. Thank you! ðŸ
                   
                   try {
                     if (isNumericId && originalProduct) {
-                      // 1. Update image link in MySQL
+                      // 1. Update full metadata in MySQL
                       await fetch(`${API_BASE_URL}/api/products/${updatedProduct.id}`, {
                         method: "PUT",
                         headers: { "Content-Type": "application/json" },
-                        body: JSON.stringify({ image_url: updatedProduct.image })
+                        body: JSON.stringify({
+                          name: updatedProduct.name,
+                          price: Number(updatedProduct.price),
+                          description: updatedProduct.description,
+                          image_url: updatedProduct.image
+                        })
                       });
                     }
 
@@ -4496,11 +4507,16 @@ My order is registered in the tracker with reference *${orderId}*. Thank you! ðŸ
                     } catch (fbErr) {
                       console.error("Firebase update failed! Rolling back MySQL image...", fbErr);
                       if (isNumericId && originalProduct) {
-                        // Rollback MySQL update to original image
+                        // Rollback MySQL update to original metadata
                         await fetch(`${API_BASE_URL}/api/products/${updatedProduct.id}`, {
                           method: "PUT",
                           headers: { "Content-Type": "application/json" },
-                          body: JSON.stringify({ image_url: originalProduct.image })
+                          body: JSON.stringify({
+                            name: originalProduct.name,
+                            price: Number(originalProduct.price),
+                            description: originalProduct.description,
+                            image_url: originalProduct.image
+                          })
                         });
                       }
                       throw fbErr;
