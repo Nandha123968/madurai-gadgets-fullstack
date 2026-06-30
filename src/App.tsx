@@ -3136,22 +3136,32 @@ My order is registered in the tracker with reference *${orderId}*. Thank you! �
                           reviewsCount: 150
                         };
 
-                        await saveProductToFirebase(fbProduct);
+                        try {
+                          await saveProductToFirebase(fbProduct);
+                          triggerToast(`Mass! "${newWatchName}" saved (MySQL image + Firebase details)! 🚀`, "success");
+                          
+                          // 3. Save aanathum list-ah automatic ah refresh panrom
+                          fetchProductsFromNodeBackend();
 
-                        triggerToast(`Mass! "${newWatchName}" saved (MySQL image + Firebase details)! 🚀`, "success");
-                        
-                        // 3. Save aanathum list-ah automatic ah refresh panrom
-                        fetchProductsFromNodeBackend();
+                          // 4. Form fields-ah empty panrom
+                          setTemplateSelect("");
+                          setNewWatchName("");
+                          setNewWatchPrice(4999);
+                          setNewWatchDescription("A+ Grade festival deal replica with dynamic dial and luxury packaging details.");
+                          setNewWatchImage("daytona"); 
+                          setNewWatchGender("Unisex");
+                          setNewWatchBrand("Other");
+                          setVariationsInput([]);
+                        } catch (fbErr) {
+                          console.error("Firebase write failed. Purging MySQL record for consistency:", fbErr);
+                          
+                          // MySQL rollback
+                          await fetch(`${API_BASE_URL}/api/products/${generatedId}`, {
+                            method: "DELETE"
+                          });
 
-                        // 4. Form fields-ah empty panrom
-                        setTemplateSelect("");
-                        setNewWatchName("");
-                        setNewWatchPrice(4999);
-                        setNewWatchDescription("A+ Grade festival deal replica with dynamic dial and luxury packaging details.");
-                        setNewWatchImage("daytona"); 
-                        setNewWatchGender("Unisex");
-                        setNewWatchBrand("Other");
-                        setVariationsInput([]);
+                          triggerToast("Aiyyo! Firebase details save failed. MySQL database rolled back ❌", "info");
+                        }
                       } else {
                         triggerToast("Aiyyo! Database-la save aagala macha ❌", "info");
                       }
@@ -4441,8 +4451,10 @@ My order is registered in the tracker with reference *${orderId}*. Thank you! �
                 onClose={() => setEditingProduct(null)}
                 onSave={async (updatedProduct) => {
                   const isNumericId = /^\d+$/.test(updatedProduct.id);
+                  const originalProduct = products.find(p => p.id === updatedProduct.id);
+                  
                   try {
-                    if (isNumericId) {
+                    if (isNumericId && originalProduct) {
                       // 1. Update image link in MySQL
                       await fetch(`${API_BASE_URL}/api/products/${updatedProduct.id}`, {
                         method: "PUT",
@@ -4450,18 +4462,32 @@ My order is registered in the tracker with reference *${orderId}*. Thank you! �
                         body: JSON.stringify({ image_url: updatedProduct.image })
                       });
                     }
-                    // 2. Save metadata details to Firebase Firestore
-                    await saveProductToFirebase(updatedProduct);
+
+                    try {
+                      // 2. Save metadata details to Firebase Firestore
+                      await saveProductToFirebase(updatedProduct);
+                    } catch (fbErr) {
+                      console.error("Firebase update failed! Rolling back MySQL image...", fbErr);
+                      if (isNumericId && originalProduct) {
+                        // Rollback MySQL update to original image
+                        await fetch(`${API_BASE_URL}/api/products/${updatedProduct.id}`, {
+                          method: "PUT",
+                          headers: { "Content-Type": "application/json" },
+                          body: JSON.stringify({ image_url: originalProduct.image })
+                        });
+                      }
+                      throw fbErr;
+                    }
+
+                    const updatedList = products.map((p) => (p.id === updatedProduct.id ? updatedProduct : p));
+                    setProducts(updatedList);
+                    saveStoredProducts(updatedList);
+                    setEditingProduct(null);
+                    triggerToast(`Product "${updatedProduct.name}" updated successfully! 🚀`, "success");
                   } catch (err) {
                     console.error("Error updating product:", err);
-                    triggerToast("Error updating database product details!", "info");
+                    triggerToast("Error updating product. Changes rolled back for consistency! ❌", "info");
                   }
-
-                  const updatedList = products.map((p) => (p.id === updatedProduct.id ? updatedProduct : p));
-                  setProducts(updatedList);
-                  saveStoredProducts(updatedList);
-                  setEditingProduct(null);
-                  triggerToast(`Product "${updatedProduct.name}" updated successfully! 🚀`, "success");
                 }}
               />
             )}

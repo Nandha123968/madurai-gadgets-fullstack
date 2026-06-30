@@ -118,17 +118,50 @@ app.put('/api/products/:id', (req, res) => {
     });
 });
 
-// Route 4: Product deletion (DELETE - removes image row from MySQL)
+// Helper function to extract Cloudinary public ID from a URL
+function getCloudinaryPublicId(url) {
+    if (!url || !url.includes("res.cloudinary.com")) return null;
+    try {
+        const parts = url.split("/upload/");
+        if (parts.length < 2) return null;
+        const relativePath = parts[1].replace(/^v\d+\//, ""); // remove version directory
+        const dotIndex = relativePath.lastIndexOf(".");
+        if (dotIndex === -1) return relativePath;
+        return relativePath.substring(0, dotIndex); // extract base filename
+    } catch (e) {
+        return null;
+    }
+}
+
+// Route 4: Product deletion (DELETE - removes image row from MySQL and deletes from Cloudinary)
 app.delete('/api/products/:id', (req, res) => {
     const { id } = req.params;
 
-    const sqlDelete = "DELETE FROM products WHERE id = ?";
-    db.query(sqlDelete, [id], (err, result) => {
-        if (err) {
-            console.error(err);
-            return res.status(500).json({ error: "Could not delete product image from MySQL ❌" });
+    // 1. Fetch current image URL to perform Cloudinary cleanup
+    const sqlSelect = "SELECT image_url FROM products WHERE id = ?";
+    db.query(sqlSelect, [id], (err, rows) => {
+        if (!err && rows && rows.length > 0) {
+            const imageUrl = rows[0].image_url;
+            const publicId = getCloudinaryPublicId(imageUrl);
+            
+            if (publicId) {
+                console.log(`Purging image from Cloudinary: ${publicId}...`);
+                cloudinary.uploader.destroy(publicId, (cloudinaryErr, result) => {
+                    if (cloudinaryErr) console.error("Cloudinary purge failed ❌:", cloudinaryErr);
+                    else console.log("Cloudinary purge successful: ✅", result);
+                });
+            }
         }
-        res.status(200).json({ message: "Product image deleted from MySQL! 🗑️" });
+
+        // 2. Delete MySQL record
+        const sqlDelete = "DELETE FROM products WHERE id = ?";
+        db.query(sqlDelete, [id], (deleteErr, result) => {
+            if (deleteErr) {
+                console.error(deleteErr);
+                return res.status(500).json({ error: "Could not delete product image from MySQL ❌" });
+            }
+            res.status(200).json({ message: "Product image deleted from MySQL and Cloudinary! 🗑️" });
+        });
     });
 });
 
