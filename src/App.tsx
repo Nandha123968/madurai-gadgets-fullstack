@@ -53,29 +53,22 @@ import { onAuthStateChanged } from "firebase/auth";
 import EditProductModal from "./components/EditProductModal";
 import StockManagementView from "./components/StockManagementView";
 import BulkUploadView from "./components/BulkUploadView";
+import ImageUploader from "./components/ImageUploader";
+import { extractDominantColor } from "./lib/colorExtractor";
+import { UploadCloud, Image as ImageIcon } from "lucide-react";
 
 const API_BASE_URL = import.meta.env.VITE_API_URL || "";
 
 // AI Generated Category Images
-// @ts-expect-error - Vite static asset
 import catAllProductsImg from "./assets/images/cat_all_products_1782245171766.jpg";
-// @ts-expect-error - Vite static asset
 import catPremierWatchesImg from "./assets/images/cat_premier_watches_1782245184861.jpg";
-// @ts-expect-error - Vite static asset
 import catJapaneseWatchesImg from "./assets/images/cat_japanese_watches_1782245197053.jpg";
-// @ts-expect-error - Vite static asset
 import catSpeakersImg from "./assets/images/cat_speakers_1782245210665.jpg";
-// @ts-expect-error - Vite static asset
 import catSunglassesImg from "./assets/images/cat_sunglasses_1782245222120.jpg";
-// @ts-expect-error - Vite static asset
 import catFashionTshirtsImg from "./assets/images/cat_fashion_tshirts_1782245236969.jpg";
-// @ts-expect-error - Vite static asset
 import maduraiGadgetsLogoImg from "./assets/images/madurai_gadgets_logo_1782245851535.jpg";
-// @ts-expect-error - Vite static asset
 import rolexDaytonaGoldImg from "./assets/images/rolex_daytona_gold_1782246183144.jpg";
-// @ts-expect-error - Vite static asset
 import apRoyalOakSkeletonImg from "./assets/images/ap_royal_oak_skeleton_1782246198897.jpg";
-// @ts-expect-error - Vite static asset
 import patekNautilusBlueImg from "./assets/images/patek_nautilus_blue_1782246214873.jpg";
 
 // AI-Generated Premier Showcase Watch List
@@ -270,6 +263,70 @@ export default function App() {
   const [newWatchSpecs, setNewWatchSpecs] = useState<string>("Movement: Japanese Quartz dual-hand precision chronograph\nDial: Lined sub-dials with glowing marks\nBezel: Scratch-resistant matte scale outer bezel\nStrap: Luxury raw solid bracelet with double lock custom safety");
   const [newWatchImage, setNewWatchImage] = useState<string>("daytona");
   const [variationsInput, setVariationsInput] = useState<{ color_name: string; color_code: string; image_url: string }[]>([]);
+  const [isUploadingVariations, setIsUploadingVariations] = useState<boolean>(false);
+
+  const handleVariationFilesUpload = async (files: FileList) => {
+    if (files.length === 0) return;
+    const filesArray = Array.from(files).slice(0, 4);
+    setIsUploadingVariations(true);
+    
+    try {
+      const sigResponse = await fetch("/api/cloudinary-signature");
+      const sigData = await sigResponse.json();
+      
+      const uploadPromises = filesArray.map(async (file) => {
+        let imageUrl = "";
+        
+        if (sigData.success) {
+          try {
+            const formData = new FormData();
+            formData.append("file", file);
+            formData.append("api_key", sigData.apiKey);
+            formData.append("timestamp", sigData.timestamp.toString());
+            formData.append("signature", sigData.signature);
+
+            const uploadUrl = `https://api.cloudinary.com/v1_1/${sigData.cloudName}/image/upload`;
+            const uploadResponse = await fetch(uploadUrl, {
+              method: "POST",
+              body: formData
+            });
+
+            if (uploadResponse.ok) {
+              const uploadData = await uploadResponse.json();
+              imageUrl = uploadData.secure_url || "";
+            }
+          } catch (err) {
+            console.error("Cloudinary variation upload failed, base64 fallback:", err);
+          }
+        }
+        
+        if (!imageUrl) {
+          imageUrl = await new Promise<string>((resolve) => {
+            const reader = new FileReader();
+            reader.onload = (e) => resolve(e.target?.result as string || "");
+            reader.readAsDataURL(file);
+          });
+        }
+        
+        const extracted = await extractDominantColor(imageUrl);
+        return {
+          color_name: extracted.name,
+          color_code: extracted.hex,
+          image_url: imageUrl
+        };
+      });
+      
+      const newVariations = await Promise.all(uploadPromises);
+      setVariationsInput(prev => [...prev, ...newVariations]);
+      triggerToast(`Successfully uploaded and extracted ${newVariations.length} watch variations! üé®`, "success");
+    } catch (err) {
+      console.error("Error processing variation files:", err);
+      triggerToast("Error uploading variation files, machan!", "info");
+    } finally {
+      setIsUploadingVariations(false);
+    }
+  };
+
   const [cardActiveImages, setCardActiveImages] = useState<Record<number | string, string>>({});
 
   // Merchant search state & price operations
@@ -3215,7 +3272,7 @@ My order is registered in the tracker with reference *${orderId}*. Thank you! ü
                     </div>
                   </div>
 
-                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                     <div>
                       <label className="block font-mono text-[10px] text-gray-400 uppercase tracking-wider mb-1 font-bold">Price (INR ‚Çπ)</label>
                       <input
@@ -3234,18 +3291,17 @@ My order is registered in the tracker with reference *${orderId}*. Thank you! ü
                         className="w-full bg-white border border-gray-300 p-2.5 rounded-sm text-gray-900 focus:outline-none focus:border-yellow-500 font-mono font-bold"
                       />
                     </div>
-                    <div>
-                      <label className="block font-mono text-[10px] text-gray-400 uppercase tracking-wider mb-1 font-bold">
-                        Product Media (Cloudinary URL) ‚òÅÔ∏è
-                      </label>
-                      <input
-                        type="text"
-                        placeholder="Paste Cloudinary Image Link here... (https://res.cloudinary.com/...)"
-                        value={newWatchImage}
-                        onChange={(e) => setNewWatchImage(e.target.value)}
-                        className="w-full bg-white border border-gray-300 p-2.5 rounded-sm text-gray-900 focus:outline-none focus:border-yellow-500 font-bold"
-                      />
-                    </div>
+                  </div>
+
+                  <div>
+                    <ImageUploader
+                      value={newWatchImage}
+                      onChange={setNewWatchImage}
+                      label="Product Media (Image Uploader) üì∏"
+                      placeholder="Paste image link or drag file..."
+                      allowUrlTab={true}
+                      helperText="Drag & drop watch image or browse. Pasting URL also supported."
+                    />
                   </div>
 
                   <div>
@@ -3260,52 +3316,130 @@ My order is registered in the tracker with reference *${orderId}*. Thank you! ü
                   </div>
 
                   {/* Color Variations Section */}
-                  <div className="bg-zinc-50 p-4 rounded-sm border border-zinc-200 space-y-3">
+                  <div className="bg-zinc-50 p-5 rounded-sm border border-zinc-200 space-y-4">
                     <div className="flex items-center justify-between">
-                      <span className="block font-mono text-[10px] text-zinc-500 uppercase tracking-wider font-bold">
-                        Color Variations üé® (Multiple colors set panna 'Add' click pannunga)
-                      </span>
+                      <div>
+                        <span className="block font-mono text-[10px] text-zinc-500 uppercase tracking-wider font-bold">
+                          Color Variations üé®
+                        </span>
+                        <p className="text-[10px] text-zinc-400 mt-0.5 font-medium">
+                          Drag & drop up to 4 watch variation images. Colors and names are extracted automatically!
+                        </p>
+                      </div>
                       <button
                         type="button"
-                        onClick={() => setVariationsInput([...variationsInput, { color_name: "", color_code: "#000000", image_url: "" }])}
+                        onClick={() => setVariationsInput([...variationsInput, { color_name: "Custom Dial", color_code: "#000000", image_url: "" }])}
                         className="px-2.5 py-1 bg-zinc-900 text-white font-mono text-[9px] font-black uppercase tracking-wider rounded-sm hover:bg-zinc-800 transition-all cursor-pointer"
                       >
-                        + Add Variation
+                        + Add Empty Row
                       </button>
                     </div>
 
+                    {/* Drag & Drop Zone for Variations */}
+                    <div
+                      onDragOver={(e) => {
+                        e.preventDefault();
+                        e.currentTarget.classList.add("border-yellow-500", "bg-yellow-50/20");
+                      }}
+                      onDragLeave={(e) => {
+                        e.preventDefault();
+                        e.currentTarget.classList.remove("border-yellow-500", "bg-yellow-50/20");
+                      }}
+                      onDrop={async (e) => {
+                        e.preventDefault();
+                        e.currentTarget.classList.remove("border-yellow-500", "bg-yellow-50/20");
+                        if (e.dataTransfer.files) {
+                          handleVariationFilesUpload(e.dataTransfer.files);
+                        }
+                      }}
+                      onClick={() => {
+                        const fileInput = document.createElement("input");
+                        fileInput.type = "file";
+                        fileInput.multiple = true;
+                        fileInput.accept = "image/*";
+                        fileInput.onchange = (e: any) => {
+                          if (e.target.files) {
+                            handleVariationFilesUpload(e.target.files);
+                          }
+                        };
+                        fileInput.click();
+                      }}
+                      className="border-2 border-dashed border-zinc-300 bg-white hover:bg-zinc-50 hover:border-zinc-400 rounded-md p-6 flex flex-col items-center justify-center text-center cursor-pointer transition-all min-h-[110px]"
+                    >
+                      {isUploadingVariations ? (
+                        <div className="flex flex-col items-center gap-2">
+                          <Loader2 className="w-5 h-5 text-yellow-600 animate-spin" />
+                          <p className="text-xs font-mono font-bold text-yellow-800 uppercase tracking-wide">
+                            Extracting & Uploading Variations...
+                          </p>
+                        </div>
+                      ) : (
+                        <div className="flex flex-col items-center gap-1">
+                          <UploadCloud className="w-6 h-6 text-zinc-400 mb-1" />
+                          <p className="text-xs font-black text-zinc-700 tracking-tight">
+                            Drag & drop up to 4 variation photos, or click to browse
+                          </p>
+                          <p className="text-[9px] text-zinc-400 font-medium">
+                            Automatically uploads and selects best HEX colors + smart naming
+                          </p>
+                        </div>
+                      )}
+                    </div>
+
+                    {/* Variations List */}
                     {variationsInput.length === 0 ? (
-                      <p className="text-[10px] text-zinc-400 font-semibold leading-relaxed">No custom color variations added yet. (Will deploy single watch variant)</p>
+                      <p className="text-[10px] text-zinc-400 font-semibold leading-relaxed text-center py-2">
+                        No color variations uploaded yet. (Will deploy single watch variant)
+                      </p>
                     ) : (
                       <div className="space-y-3">
                         {variationsInput.map((v, index) => (
-                          <div key={index} className="grid grid-cols-1 sm:grid-cols-12 gap-2 items-end bg-white p-3 border border-zinc-200 rounded-xs relative">
-                            <div className="sm:col-span-3">
+                          <div key={index} className="grid grid-cols-1 sm:grid-cols-12 gap-3 items-center bg-white p-3 border border-zinc-200 rounded-sm relative text-left">
+                            {/* Thumbnail Preview */}
+                            <div className="sm:col-span-2 flex items-center justify-center">
+                              <div className="w-12 h-12 bg-zinc-50 border border-zinc-200 rounded p-0.5 flex items-center justify-center overflow-hidden">
+                                {v.image_url ? (
+                                  <img
+                                    src={v.image_url}
+                                    alt="Variation Preview"
+                                    className="w-full h-full object-contain"
+                                    referrerPolicy="no-referrer"
+                                  />
+                                ) : (
+                                  <ImageIcon className="w-4 h-4 text-zinc-300" />
+                                )}
+                              </div>
+                            </div>
+
+                            {/* Color Name Input */}
+                            <div className="sm:col-span-4">
                               <label className="block text-[8px] font-mono text-zinc-400 uppercase font-black mb-1">Color Name</label>
                               <input
                                 type="text"
-                                placeholder="e.g. Stealth Black"
+                                placeholder="e.g. Ocean Blue"
                                 value={v.color_name}
                                 onChange={(e) => {
                                   const updated = [...variationsInput];
                                   updated[index].color_name = e.target.value;
                                   setVariationsInput(updated);
                                 }}
-                                className="w-full bg-white border border-gray-300 p-1.5 rounded-sm text-gray-900 text-xs focus:outline-none focus:border-yellow-500 font-bold"
+                                className="w-full bg-white border border-gray-300 px-2 py-1.5 rounded-sm text-gray-900 text-xs focus:outline-none focus:border-yellow-500 font-bold"
                               />
                             </div>
-                            <div className="sm:col-span-2">
-                              <label className="block text-[8px] font-mono text-zinc-400 uppercase font-black mb-1">Color Code</label>
+
+                            {/* Color Code Picker / Hex Input */}
+                            <div className="sm:col-span-3">
+                              <label className="block text-[8px] font-mono text-zinc-400 uppercase font-black mb-1">Color Hex</label>
                               <div className="flex items-center gap-1.5">
                                 <input
                                   type="color"
-                                  value={v.color_code}
+                                  value={v.color_code.startsWith("#") && v.color_code.length === 7 ? v.color_code : "#000000"}
                                   onChange={(e) => {
                                     const updated = [...variationsInput];
                                     updated[index].color_code = e.target.value;
                                     setVariationsInput(updated);
                                   }}
-                                  className="w-8 h-7 bg-white border border-gray-300 p-0.5 rounded-sm cursor-pointer"
+                                  className="w-7 h-7 bg-white border border-gray-300 p-0.5 rounded-sm cursor-pointer"
                                 />
                                 <input
                                   type="text"
@@ -3316,29 +3450,33 @@ My order is registered in the tracker with reference *${orderId}*. Thank you! ü
                                     updated[index].color_code = e.target.value;
                                     setVariationsInput(updated);
                                   }}
-                                  className="w-full bg-white border border-gray-300 p-1.5 rounded-sm text-gray-900 text-[10px] focus:outline-none focus:border-yellow-500 font-mono font-bold"
+                                  className="w-full bg-white border border-gray-300 px-1.5 py-1.5 rounded-sm text-gray-900 text-[10px] focus:outline-none focus:border-yellow-500 font-mono font-bold"
                                 />
                               </div>
                             </div>
-                            <div className="sm:col-span-6">
-                              <label className="block text-[8px] font-mono text-zinc-400 uppercase font-black mb-1">Variation Image URL (Cloudinary / Unsplash)</label>
+
+                            {/* Image Link Input (Cloudinary / Web URL, editable!) */}
+                            <div className="sm:col-span-2">
+                              <label className="block text-[8px] font-mono text-zinc-400 uppercase font-black mb-1">Source URL</label>
                               <input
                                 type="text"
-                                placeholder="Paste image link here..."
+                                placeholder="Paste image link..."
                                 value={v.image_url}
                                 onChange={(e) => {
                                   const updated = [...variationsInput];
                                   updated[index].image_url = e.target.value;
                                   setVariationsInput(updated);
                                 }}
-                                className="w-full bg-white border border-gray-300 p-1.5 rounded-sm text-gray-900 text-xs focus:outline-none focus:border-yellow-500 font-bold"
+                                className="w-full bg-white border border-gray-300 px-2 py-1.5 rounded-sm text-gray-900 text-[9px] focus:outline-none focus:border-yellow-500 font-mono"
                               />
                             </div>
+
+                            {/* Delete Button */}
                             <div className="sm:col-span-1 flex justify-end">
                               <button
                                 type="button"
                                 onClick={() => setVariationsInput(variationsInput.filter((_, idx) => idx !== index))}
-                                className="p-1.5 bg-red-50 text-red-650 hover:bg-red-100 rounded-sm transition-all cursor-pointer"
+                                className="p-1.5 bg-red-50 text-red-500 hover:bg-red-100 rounded-sm transition-all cursor-pointer border border-red-150"
                                 title="Remove Variation"
                               >
                                 <X className="w-3.5 h-3.5" />
@@ -3553,26 +3691,22 @@ My order is registered in the tracker with reference *${orderId}*. Thank you! ü
                   <div className="space-y-4 text-xs text-gray-700">
                     {/* File Upload zone or base64 converter */}
                     <div className="space-y-1.5">
-                      <label className="block font-mono text-[10px] text-gray-400 uppercase tracking-wider font-bold">Select Custom Hero PNG/JPG</label>
-                      <input
-                        type="file"
-                        accept="image/*"
-                        onChange={(e) => {
-                          const file = e.target.files?.[0];
-                          if (file) {
-                            const reader = new FileReader();
-                            reader.onload = (event) => {
-                              if (event.target?.result) {
-                                const base64Str = event.target.result as string;
-                                setCustomHeroImage(base64Str);
-                                localStorage.setItem("madurai_custom_hero_image", base64Str);
-                                triggerToast("Premium Hero Image successfully set, machan! Check the store home.", "success");
-                              }
-                            };
-                            reader.readAsDataURL(file);
+                      <ImageUploader
+                        value={customHeroImage}
+                        onChange={(base64OrUrl) => {
+                          setCustomHeroImage(base64OrUrl);
+                          if (base64OrUrl) {
+                            localStorage.setItem("madurai_custom_hero_image", base64OrUrl);
+                            triggerToast("Premium Hero Image successfully set, machan! Check the store home.", "success");
+                          } else {
+                            localStorage.removeItem("madurai_custom_hero_image");
+                            triggerToast("Hero image reset to default.", "info");
                           }
                         }}
-                        className="w-full bg-gray-50 border border-gray-200 p-2 rounded-sm text-[10px] font-mono text-gray-800 file:mr-2 file:py-1 file:px-2 file:border-0 file:text-[10px] file:font-black file:bg-[#2874f0] file:text-white hover:file:bg-[#1259c7] cursor-pointer"
+                        label="Custom Hero Banner Artwork üé®"
+                        placeholder="Paste custom hero image URL..."
+                        allowUrlTab={true}
+                        helperText="Upload a widescreen custom banner or drag & drop. Or select a curated watch banner below."
                       />
                     </div>
 

@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from "react";
 import { X, Save, Sparkles, AlertCircle } from "lucide-react";
 import { Product } from "../types";
+import ImageUploader from "./ImageUploader";
 
 interface EditProductModalProps {
   product: Product;
@@ -54,19 +55,6 @@ export default function EditProductModal({ product, onClose, onSave }: EditProdu
     };
 
     onSave(updated);
-  };
-
-  const handleImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (file) {
-      const reader = new FileReader();
-      reader.onload = (event) => {
-        if (event.target?.result) {
-          setImage(event.target.result as string);
-        }
-      };
-      reader.readAsDataURL(file);
-    }
   };
 
   return (
@@ -208,31 +196,15 @@ export default function EditProductModal({ product, onClose, onSave }: EditProdu
           </div>
 
           {/* Image Upload field */}
-          <div className="space-y-1 border border-dashed border-zinc-200 p-4 rounded bg-zinc-50">
-            <label className="block text-[10px] font-mono text-zinc-400 uppercase tracking-wider font-bold mb-1">Product Watch Artwork/Image Source</label>
-            <div className="flex items-center gap-4">
-              {image && (
-                <div className="w-16 h-16 bg-white border border-zinc-200 p-1 flex items-center justify-center rounded overflow-hidden shrink-0">
-                  <img 
-                    src={image} 
-                    alt="Current preview" 
-                    className="w-full h-full object-contain"
-                    referrerPolicy="no-referrer"
-                  />
-                </div>
-              )}
-              <div className="flex-1 space-y-1.5">
-                <input
-                  type="file"
-                  accept="image/*"
-                  onChange={handleImageUpload}
-                  className="w-full text-[10px] font-mono text-zinc-700 file:mr-2 file:py-1 file:px-2.5 file:border-0 file:text-[10px] file:font-black file:bg-zinc-200 file:text-zinc-800 hover:file:bg-zinc-300 cursor-pointer"
-                />
-                <p className="text-[9px] text-zinc-400">
-                  Select a png or jpeg photo from your computer to replace. It will update instantly.
-                </p>
-              </div>
-            </div>
+          <div className="space-y-1">
+            <ImageUploader
+              value={image}
+              onChange={setImage}
+              label="Product Watch Artwork/Image Source"
+              placeholder="Paste direct watch image URL (https://...)"
+              allowUrlTab={true}
+              helperText="Drag & drop or click to upload a local image, or paste a link."
+            />
           </div>
 
           {/* Action buttons */}
