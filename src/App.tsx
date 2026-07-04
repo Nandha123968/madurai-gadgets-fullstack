@@ -3222,11 +3222,72 @@ My order is registered in the tracker with reference *${orderId}*. Thank you! �
                         setNewWatchBrand("Other");
                         setVariationsInput([]);
                       } else {
-                        triggerToast("Aiyyo! Database-la save aagala macha ❌", "info");
+                        // Fallback: Save to LocalStorage
+                        const fallbackId = `p-watch-local-${Date.now()}`;
+                        const localProduct = {
+                          id: fallbackId,
+                          name: newWatchName,
+                          price: Number(newWatchPrice),
+                          description: newWatchDescription,
+                          image: newWatchImage,
+                          rating: 4.8,
+                          reviewsCount: 1,
+                          category: newWatchCategory,
+                          gender: newWatchGender,
+                          specs: newWatchSpecs.split("\n").map((s: string) => s.trim()).filter((s: string) => s.length > 0),
+                          stock: newWatchStock,
+                          variations: variationsInput.map((v: any) => ({ color: v.color_code || v.color_name, image: v.image_url || newWatchImage }))
+                        };
+                        const updatedProducts = [localProduct, ...products];
+                        setProducts(updatedProducts);
+                        saveStoredProducts(updatedProducts);
+
+                        triggerToast(`Saved locally (Offline Mode), machan! Database connection is pending. 💾`, "success");
+
+                        // Form fields-ah empty panrom
+                        setTemplateSelect("");
+                        setNewWatchName("");
+                        setNewWatchPrice(4999);
+                        setNewWatchDescription("A+ Grade festival deal replica with dynamic dial and luxury packaging details.");
+                        setNewWatchImage("daytona"); 
+                        setNewWatchGender("Unisex");
+                        setNewWatchBrand("Other");
+                        setVariationsInput([]);
                       }
                     } catch (error) {
                       console.error("Error:", error);
-                      triggerToast("Server connect aagala! Terminal-la node index.js run aagutha paaru 🔌", "info");
+                      
+                      // Fallback on network/fetch error: Save to LocalStorage
+                      const fallbackId = `p-watch-local-${Date.now()}`;
+                      const localProduct = {
+                        id: fallbackId,
+                        name: newWatchName,
+                        price: Number(newWatchPrice),
+                        description: newWatchDescription,
+                        image: newWatchImage,
+                        rating: 4.8,
+                        reviewsCount: 1,
+                        category: newWatchCategory,
+                        gender: newWatchGender,
+                        specs: newWatchSpecs.split("\n").map((s: string) => s.trim()).filter((s: string) => s.length > 0),
+                        stock: newWatchStock,
+                        variations: variationsInput.map((v: any) => ({ color: v.color_code || v.color_name, image: v.image_url || newWatchImage }))
+                      };
+                      const updatedProducts = [localProduct, ...products];
+                      setProducts(updatedProducts);
+                      saveStoredProducts(updatedProducts);
+
+                      triggerToast(`Saved locally (Offline Mode), machan! Backend server is not running. 💾`, "success");
+
+                      // Form fields-ah empty panrom
+                      setTemplateSelect("");
+                      setNewWatchName("");
+                      setNewWatchPrice(4999);
+                      setNewWatchDescription("A+ Grade festival deal replica with dynamic dial and luxury packaging details.");
+                      setNewWatchImage("daytona"); 
+                      setNewWatchGender("Unisex");
+                      setNewWatchBrand("Other");
+                      setVariationsInput([]);
                     }
                   }}
                   className="space-y-4 text-xs font-sans text-gray-800"
