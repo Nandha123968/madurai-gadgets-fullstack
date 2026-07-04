@@ -44,4 +44,7 @@ export interface Order {
   paymentStatus?: "Unpaid" | "Paid";
   stCourierId?: string;
   stCourierStatusLog?: { date: string; time: string; status: string; location: string }[];
+  utr?: string;
+  paymentMethod?: "whatsapp" | "upi";
 }
+

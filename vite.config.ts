@@ -9,7 +9,7 @@ export default defineConfig(() => {
   const isProduction = process.env.CONTEXT === 'production';
 
   return {
-    base: isProduction ? '/' : './',
+    base: '/',
     plugins: [react(), tailwindcss()],
     resolve: {
       alias: {
