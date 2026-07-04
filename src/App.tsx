@@ -272,7 +272,7 @@ export default function App() {
     
     let sigData = { success: false, apiKey: "", timestamp: 0, signature: "", cloudName: "" };
     try {
-      const sigResponse = await fetch("/api/cloudinary-signature");
+      const sigResponse = await fetch(`${API_BASE_URL}/api/cloudinary-signature`);
       if (sigResponse.ok) {
         sigData = await sigResponse.json();
       }

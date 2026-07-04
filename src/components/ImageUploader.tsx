@@ -2,6 +2,8 @@ import React, { useState, useRef } from "react";
 import { UploadCloud, Image as ImageIcon, Link as LinkIcon, Trash2, Loader2, Check } from "lucide-react";
 import { motion, AnimatePresence } from "motion/react";
 
+const API_BASE_URL = import.meta.env.VITE_API_URL || "";
+
 interface ImageUploaderProps {
   value: string;
   onChange: (value: string) => void;
@@ -38,7 +40,7 @@ export default function ImageUploader({
 
     try {
       // 1. Fetch Cloudinary signature from Express backend
-      const sigResponse = await fetch("/api/cloudinary-signature");
+      const sigResponse = await fetch(`${API_BASE_URL}/api/cloudinary-signature`);
       if (!sigResponse.ok) {
         throw new Error("Failed to load signature");
       }
