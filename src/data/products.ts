@@ -116,7 +116,7 @@ const BASE_PRODUCTS: Product[] = [
     price: 3499.0,
     rating: 4.8,
     reviewsCount: 154,
-    category: "Bluetooth Speakers",
+    category: "Electronics",
     description: "Incredible replica of the premium portable Bluetooth speaker. Delivers deep bass, crisp highs, and dual passive radiators. Fully shockproof wrap.",
     specs: [
       "Driver: 52mm x 90mm dome-woofer with twin passive radiator vents",
@@ -133,7 +133,7 @@ const BASE_PRODUCTS: Product[] = [
     price: 4999.0,
     rating: 4.9,
     reviewsCount: 112,
-    category: "Bluetooth Speakers",
+    category: "Electronics",
     description: "Vintage retro styling meets modern heavy sound copy. Compact, multi-directional audio, textured vinyl shell with solid brass control knob.",
     specs: [
       "Acoustics: Absolute 360-degree True Stereophonic sound signature",
@@ -309,8 +309,7 @@ function generateExtendedCatalog(): Product[] {
       gender: watchGender
     });
   }
-
-  // 2. Generate Bluetooth Speakers (exactly 50 items)
+  // 2. Generate Electronics (exactly 50 items)
   const speakerBrands = ["JBL Pulse", "Marshall Emberton", "JBL Charge", "Marshall Stanmore", "Bose SoundLink", "Sony SRS-XB", "Harman Kardon Onyx", "Boat Stone", "JBL Xtreme", "Marshall Kilburn"];
   const speakerModifiers = ["V4 Pro Waterproof Copy", "Signature Gold Edition", "Retro Vinyl Companion", "UltraBass Party Link", "Matte Sandstone Edition", "Rugged Outdoor Companion", "Steel Mesh Special", "Stealth Tactical Edition", "Dual-Radiator Loudspeaker", "Midnight Matte Finish"];
   
@@ -322,14 +321,14 @@ function generateExtendedCatalog(): Product[] {
     const rating = Math.round((4.3 + ((i * 2) % 8) / 10) * 10) / 10;
     const reviewsCount = 10 + ((i * 13) % 250);
     const stock = 20;
-
+ 
     catalog.push({
       id: `p-speaker-dyn-${i}`,
       name: `${brand} ${modifier} (High Copy)`,
       price: price,
       rating: rating,
       reviewsCount: reviewsCount,
-      category: "Bluetooth Speakers",
+      category: "Electronics",
       description: `Premium high-copy ${brand} portable Bluetooth speaker with ${modifier} style. Delivers rich passive radiator bass, crisp stereophonic sound, and incredible design similarity.`,
       specs: [
         "Acoustics: High-fidelity stereo drivers with passive bass thump",

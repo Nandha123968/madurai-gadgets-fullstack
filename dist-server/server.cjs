@@ -92,7 +92,8 @@ app.use((0, import_cors.default)({
   },
   credentials: true
 }));
-app.use(import_express.default.json({ limit: "10kb" }));
+app.use(import_express.default.json({ limit: "50mb" }));
+app.use(import_express.default.urlencoded({ limit: "50mb", extended: true }));
 var apiLimiter = (0, import_express_rate_limit.rateLimit)({
   windowMs: 15 * 60 * 1e3,
   // 15 Minutes window

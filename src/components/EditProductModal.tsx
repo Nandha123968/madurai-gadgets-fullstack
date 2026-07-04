@@ -136,7 +136,8 @@ export default function EditProductModal({ product, onClose, onSave }: EditProdu
                 <option value="Premier Watches">Premier Watches</option>
                 <option value="Japanese Model Watches">Japanese Model Watches</option>
                 <option value="Normal Watches">Normal Watches (800 - 1500)</option>
-                <option value="Bluetooth Speakers">Bluetooth Speakers</option>
+                <option value="Electronics">Electronics</option>
+                <option value="Handbags">Handbags</option>
                 <option value="Sunglasses">Sunglasses</option>
                 <option value="Accessories">Accessories</option>
               </select>

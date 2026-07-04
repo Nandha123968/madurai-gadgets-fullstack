@@ -91,8 +91,9 @@ app.use(cors({
   credentials: true
 }));
 
-// Payload Limit: Hacker periya data anuppi server-ah crash pannaama irukka limit (10kb) set panrom.
-app.use(express.json({ limit: '10kb' })); 
+// Payload Limit: Increased payload limits to 50mb to support base64 variation images upload, machan!
+app.use(express.json({ limit: '50mb' })); 
+app.use(express.urlencoded({ limit: '50mb', extended: true }));
 
 // 3. Rate Limiter: DDoS & Spam Bot Protection. 
 // Oru IP-la irunthu 15 nimishathukku 300 API requests thaan panna mudiyum.

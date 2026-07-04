@@ -254,7 +254,8 @@ export default function BulkUploadView({
                   <option value="Premier Watches">Premier Watches ⌚</option>
                   <option value="Normal Watches">Normal Watches 💸</option>
                   <option value="Japanese Model Watches">Japanese Model Watches 🇯🇵</option>
-                  <option value="Bluetooth Speakers">Bluetooth Speakers 🔊</option>
+                  <option value="Electronics">Electronics 🔊</option>
+                  <option value="Handbags">Handbags 👜</option>
                   <option value="Accessories">Accessories 🎒</option>
                 </select>
               </div>

@@ -267,13 +267,20 @@ export default function App() {
 
   const handleVariationFilesUpload = async (files: FileList) => {
     if (files.length === 0) return;
-    const filesArray = Array.from(files).slice(0, 4);
+    const filesArray = Array.from(files).slice(0, 6);
     setIsUploadingVariations(true);
     
+    let sigData = { success: false, apiKey: "", timestamp: 0, signature: "", cloudName: "" };
     try {
       const sigResponse = await fetch("/api/cloudinary-signature");
-      const sigData = await sigResponse.json();
-      
+      if (sigResponse.ok) {
+        sigData = await sigResponse.json();
+      }
+    } catch (err) {
+      console.warn("Could not fetch Cloudinary signature, falling back to local base64:", err);
+    }
+    
+    try {
       const uploadPromises = filesArray.map(async (file) => {
         let imageUrl = "";
         
@@ -1726,7 +1733,8 @@ My order is registered in the tracker with reference *${orderId}*. Thank you! ðŸ
                   { id: "Premier Watches", label: "Premier Watches", image: catPremierWatchesImg },
                   { id: "Normal Watches", label: "Normal Watches", image: catPremierWatchesImg },
                   { id: "Japanese Model Watches", label: "Japanese Models", image: catJapaneseWatchesImg },
-                  { id: "Bluetooth Speakers", label: "Speakers", image: catSpeakersImg },
+                  { id: "Electronics", label: "Electronics", image: catSpeakersImg },
+                  { id: "Handbags", label: "Handbags", image: "https://images.unsplash.com/photo-1584917865442-de89df76afd3?q=80&w=300&auto=format&fit=crop" },
                   { id: "Sunglasses", label: "Sunglasses", image: catSunglassesImg },
                   { id: "Fashion", label: "Fashion T-Shirts", image: catFashionTshirtsImg, isComingSoon: true }
                 ].map((item) => {
@@ -2034,7 +2042,7 @@ My order is registered in the tracker with reference *${orderId}*. Thank you! ðŸ
                   {/* Category Filter Pills */}
                   <div className="flex flex-wrap items-center gap-1.5">
                     <span className="text-xs text-zinc-500 font-bold uppercase tracking-wider mr-2">Category:</span>
-                    {["All", "Premier Watches", "Normal Watches", "Japanese Model Watches", "Bluetooth Speakers", "Sunglasses", "Fashion"].map((cat) => {
+                    {["All", "Premier Watches", "Normal Watches", "Japanese Model Watches", "Electronics", "Handbags", "Sunglasses", "Fashion"].map((cat) => {
                       const isComingSoon = cat === "Fashion";
                       return (
                         <button
@@ -3241,7 +3249,7 @@ My order is registered in the tracker with reference *${orderId}*. Thank you! ðŸ
                         onChange={(e) => setNewWatchCategory(e.target.value)}
                         className="w-full bg-white border border-gray-300 p-2.5 rounded-sm text-gray-950 focus:outline-none focus:border-yellow-500 font-bold"
                       >
-                        {["Premier Watches", "Normal Watches", "Japanese Model Watches", "Bluetooth Speakers", "Sunglasses", "Accessories"].map((cat) => (
+                        {["Premier Watches", "Normal Watches", "Japanese Model Watches", "Electronics", "Handbags", "Sunglasses", "Accessories"].map((cat) => (
                           <option key={cat} value={cat} className="bg-white text-gray-950 font-bold">{cat}</option>
                         ))}
                       </select>
@@ -3323,7 +3331,7 @@ My order is registered in the tracker with reference *${orderId}*. Thank you! ðŸ
                           Color Variations ðŸŽ¨
                         </span>
                         <p className="text-[10px] text-zinc-400 mt-0.5 font-medium">
-                          Drag & drop up to 4 watch variation images. Colors and names are extracted automatically!
+                          Drag & drop up to 6 watch variation images. Colors and names are extracted automatically!
                         </p>
                       </div>
                       <button
@@ -3377,7 +3385,7 @@ My order is registered in the tracker with reference *${orderId}*. Thank you! ðŸ
                         <div className="flex flex-col items-center gap-1">
                           <UploadCloud className="w-6 h-6 text-zinc-400 mb-1" />
                           <p className="text-xs font-black text-zinc-700 tracking-tight">
-                            Drag & drop up to 4 variation photos, or click to browse
+                            Drag & drop up to 6 variation photos, or click to browse
                           </p>
                           <p className="text-[9px] text-zinc-400 font-medium">
                             Automatically uploads and selects best HEX colors + smart naming
