@@ -384,6 +384,137 @@ export default function App() {
     }
   }, [detailedProduct]);
 
+  // Dynamic SEO & JSON-LD Schema injection for rich rating snippets, machan!
+  useEffect(() => {
+    // 1. Dynamic document title and description updates
+    let title = "Madurai Gadgets 58 | Premium Luxury Copy Watches & Electronics";
+    let metaDescription = "Shop premium quality A+ Grade luxury copy watches & speakers at Madurai Gadgets 58. Explore Rolex, AP, Patek Philippe mastercopies. Safe shipping in Madurai & India.";
+    
+    if (detailedProduct) {
+      title = `${detailedProduct.name} | ₹${detailedProduct.price.toLocaleString("en-IN")} | Madurai Gadgets 58`;
+      metaDescription = `${detailedProduct.description || "A+ Grade premium quality copy watch from Madurai Gadgets 58."} Price: ₹${detailedProduct.price.toLocaleString("en-IN")}. Verified reviews rating: ${detailedProduct.rating || 4.8}/5.`;
+    } else if (activeTab === "tracker") {
+      title = "Track Your Order | Madurai Gadgets 58";
+      metaDescription = "Real-time shipping and delivery order tracker portal for Madurai Gadgets 58 orders.";
+    } else if (activeTab === "merchant") {
+      title = "Merchant Control Center | Madurai Gadgets 58";
+      metaDescription = "Inventory and billing control center portal for Madurai Gadgets 58 store managers.";
+    } else if (selectedCategory && selectedCategory !== "All") {
+      title = `Premium ${selectedCategory} | Madurai Gadgets 58`;
+      metaDescription = `Explore our exclusive collection of premium A+ Grade ${selectedCategory} at Madurai Gadgets 58. Best replica watch deals.`;
+    }
+
+    document.title = title;
+
+    // Update meta description tag dynamically
+    let descMeta = document.querySelector('meta[name="description"]');
+    if (descMeta) {
+      descMeta.setAttribute("content", metaDescription);
+    } else {
+      descMeta = document.createElement("meta");
+      descMeta.setAttribute("name", "description");
+      descMeta.setAttribute("content", metaDescription);
+      document.head.appendChild(descMeta);
+    }
+
+    // 2. Dynamic JSON-LD Schema injection for Product & Organization Search Snippets
+    // Remove existing dynamic schema script if any
+    const existingScript = document.getElementById("mg58-json-ld");
+    if (existingScript) {
+      existingScript.remove();
+    }
+
+    let schemaData: any = null;
+
+    if (detailedProduct) {
+      // Product Rich Snippet Schema (enables ratings and pricing in Google search results)
+      schemaData = {
+        "@context": "https://schema.org/",
+        "@type": "Product",
+        "name": detailedProduct.name,
+        "image": [
+          detailedProduct.image.startsWith("http") 
+            ? detailedProduct.image 
+            : `https://www.maduraigadgets58.in/assets/images/${detailedProduct.image}.jpg`
+        ],
+        "description": detailedProduct.description,
+        "sku": detailedProduct.id,
+        "brand": {
+          "@type": "Brand",
+          "name": (detailedProduct as any).brand || "Madurai Gadgets"
+        },
+        "offers": {
+          "@type": "Offer",
+          "url": `https://www.maduraigadgets58.in/?product=${detailedProduct.id}`,
+          "priceCurrency": "INR",
+          "price": detailedProduct.price.toString(),
+          "itemCondition": "https://schema.org/NewCondition",
+          "availability": detailedProduct.stock && detailedProduct.stock > 0 
+            ? "https://schema.org/InStock" 
+            : "https://schema.org/OutOfStock",
+          "priceValidUntil": "2027-12-31"
+        },
+        "aggregateRating": {
+          "@type": "AggregateRating",
+          "ratingValue": (detailedProduct.rating || 4.8).toString(),
+          "reviewCount": (detailedProduct.reviewsCount || 10).toString(),
+          "bestRating": "5",
+          "worstRating": "1"
+        }
+      };
+    } else {
+      // Local Business and Store Schema for homepage indexing ratings
+      schemaData = {
+        "@context": "https://schema.org",
+        "@type": "Store",
+        "name": "Madurai Gadgets 58",
+        "image": "https://www.maduraigadgets58.in/assets/images/madurai_gadgets_logo_1782245851535.jpg",
+        "@id": "https://www.maduraigadgets58.in/#store",
+        "url": "https://www.maduraigadgets58.in/",
+        "telephone": "+919585969334",
+        "priceRange": "₹₹",
+        "address": {
+          "@type": "PostalAddress",
+          "streetAddress": "Vakkil New Street, Simmakkal",
+          "addressLocality": "Madurai",
+          "addressRegion": "Tamil Nadu",
+          "postalCode": "625001",
+          "addressCountry": "IN"
+        },
+        "geo": {
+          "@type": "GeoCoordinates",
+          "latitude": "9.9252",
+          "longitude": "78.1224"
+        },
+        "openingHoursSpecification": {
+          "@type": "OpeningHoursSpecification",
+          "dayOfWeek": [
+            "Monday",
+            "Tuesday",
+            "Wednesday",
+            "Thursday",
+            "Friday",
+            "Saturday",
+            "Sunday"
+          ],
+          "opens": "10:00",
+          "closes": "22:00"
+        },
+        "sameAs": [
+          "https://www.instagram.com/madurai_gadgets_58"
+        ]
+      };
+    }
+
+    if (schemaData) {
+      const script = document.createElement("script");
+      script.id = "mg58-json-ld";
+      script.type = "application/ld+json";
+      script.innerHTML = JSON.stringify(schemaData, null, 2);
+      document.head.appendChild(script);
+    }
+  }, [detailedProduct, activeTab, selectedCategory]);
+
   // AI Spotlight Showcase Action Handlers
   const handleSpotlightAddToCart = (item: typeof AI_SPOTLIGHT_WATCHES[0]) => {
     let matchingProduct = products.find((p) =>

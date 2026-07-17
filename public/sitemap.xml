@@ -1,0 +1,45 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
+  <!-- Main Home Page -->
+  <url>
+    <loc>https://www.maduraigadgets58.in/</loc>
+    <lastmod>2026-07-17</lastmod>
+    <changefreq>daily</changefreq>
+    <priority>1.0</priority>
+  </url>
+  <!-- Shop Tab -->
+  <url>
+    <loc>https://www.maduraigadgets58.in/?tab=shop</loc>
+    <lastmod>2026-07-17</lastmod>
+    <changefreq>daily</changefreq>
+    <priority>0.9</priority>
+  </url>
+  <!-- Tracker Tab -->
+  <url>
+    <loc>https://www.maduraigadgets58.in/?tab=tracker</loc>
+    <lastmod>2026-07-17</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.7</priority>
+  </url>
+  <!-- Premier Watches Category -->
+  <url>
+    <loc>https://www.maduraigadgets58.in/?category=Premier%20Watches</loc>
+    <lastmod>2026-07-17</lastmod>
+    <changefreq>daily</changefreq>
+    <priority>0.8</priority>
+  </url>
+  <!-- Japanese Model Watches Category -->
+  <url>
+    <loc>https://www.maduraigadgets58.in/?category=Japanese%20Model%20Watches</loc>
+    <lastmod>2026-07-17</lastmod>
+    <changefreq>daily</changefreq>
+    <priority>0.8</priority>
+  </url>
+  <!-- Electronics Category -->
+  <url>
+    <loc>https://www.maduraigadgets58.in/?category=Electronics</loc>
+    <lastmod>2026-07-17</lastmod>
+    <changefreq>daily</changefreq>
+    <priority>0.8</priority>
+  </url>
+</urlset>
